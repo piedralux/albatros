@@ -232,7 +232,7 @@ export default function App() {
       <section className="max-w-5xl mx-auto px-4 pt-12 pb-6 text-center">
         <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 tracking-tight">Encontrá tu spot perfecto con Albatros</h2>
         <p className="text-cyan-400 font-medium max-w-2xl mx-auto text-lg md:text-xl leading-relaxed mb-4">
-          Ingresá tus parámetros y obtené recomendaciones de precisión quirúrgica para tu próxima sesión en el agua.
+          Ingresá tus parámetros y obtené recomendaciones de precisión quirúrgica para tu próxima sesión en el agua
         </p>
         <p className="text-slate-400 max-w-2xl mx-auto text-sm md:text-base leading-relaxed">
           Albatros cruza datos meteorológicos en tiempo real con la geografía de cada spot en Argentina y te da la mejor recomendación para un gran momento acuático.

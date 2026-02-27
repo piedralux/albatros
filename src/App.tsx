@@ -230,7 +230,7 @@ export default function App() {
 
       {/* Intro Text */}
       <section className="max-w-5xl mx-auto px-4 pt-12 pb-6 text-center">
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 tracking-tight">Encontrá tu spot perfecto con Albatros.</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 tracking-tight">Encontrá tu spot perfecto con Albatros</h2>
         <p className="text-cyan-400 font-medium max-w-2xl mx-auto text-lg md:text-xl leading-relaxed mb-4">
           Ingresá tus parámetros y obtené recomendaciones de precisión quirúrgica para tu próxima sesión en el agua.
         </p>

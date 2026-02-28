@@ -299,15 +299,23 @@ export default function App() {
       <section className="relative w-full overflow-hidden border-b border-slate-800">
         {/* Background Video */}
         <div className="absolute inset-0 w-full h-full z-0 bg-slate-900">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="object-cover w-full h-full"
-          >
-            <source src="https://cdn.coverr.co/videos/coverr-surfing-through-the-waves-4262/1080p.mp4" type="video/mp4" />
-          </video>
+          <div 
+            className="absolute inset-0 w-full h-full"
+            dangerouslySetInnerHTML={{
+              __html: `
+                <video
+                  autoplay
+                  loop
+                  muted
+                  playsinline
+                  poster="https://images.unsplash.com/photo-1502680390469-be75c86b636f?q=80&w=2070&auto=format&fit=crop"
+                  class="object-cover w-full h-full opacity-80"
+                >
+                  <source src="https://cdn.coverr.co/videos/coverr-surfing-through-the-waves-4262/1080p.mp4" type="video/mp4" />
+                </video>
+              `
+            }}
+          />
           {/* Overlays for readability */}
           <div className="absolute inset-0 bg-slate-950/50"></div>
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>

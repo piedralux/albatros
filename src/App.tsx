@@ -185,6 +185,22 @@ export default function App() {
     });
     window.history.pushState({}, '', `?${params.toString()}`);
 
+    // Cache key based on search parameters to save API quota
+    const cacheKey = `albatros_${params.toString()}`;
+    const cachedResult = localStorage.getItem(cacheKey);
+
+    if (cachedResult) {
+      try {
+        console.log("Cargando desde caché para ahorrar cuota de API...");
+        setResult(JSON.parse(cachedResult));
+        setLoading(false);
+        return;
+      } catch (e) {
+        // If cache is invalid, ignore and fetch again
+        localStorage.removeItem(cacheKey);
+      }
+    }
+
     const prompt = `
 📍 Ubicación: ${location}
 📅 Fecha y Franja Horaria: Desde ${start.toLocaleString('es-AR')} hasta ${end.toLocaleString('es-AR')}
@@ -254,6 +270,9 @@ export default function App() {
       const jsonStr = response.text || '{}';
       const parsed = JSON.parse(jsonStr);
       setResult(parsed);
+      
+      // Save successful result to cache
+      localStorage.setItem(cacheKey, JSON.stringify(parsed));
     } catch (err: any) {
       console.error(err);
       if (err.message?.includes('429') || err.message?.includes('RESOURCE_EXHAUSTED')) {
@@ -311,7 +330,7 @@ export default function App() {
                   poster="https://images.unsplash.com/photo-1502680390469-be75c86b636f?q=80&w=2070&auto=format&fit=crop"
                   class="object-cover w-full h-full opacity-80"
                 >
-                  <source src="https://cdn.coverr.co/videos/coverr-surfing-through-the-waves-4262/1080p.mp4" type="video/mp4" />
+                  <source src="/surf-bg.mp4" type="video/mp4" />
                 </video>
               `
             }}

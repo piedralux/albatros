@@ -39,7 +39,8 @@ El output para el usuario debe ser un objeto JSON que contenga:
    - "timeWindow": Ej: "Sábado (13:30 a 16:30)"
    - "spots": Array de spots recomendados para ese momento, ordenados por calidad. Cada spot tiene "name", "description" (explicación corta del porqué), "lat" y "lng".
 3. "radarAnalysis": Un string con el análisis detallado bajo el título "El Radar de Albatros (Análisis de Condiciones)". Utilizá formato Markdown para estructurar la respuesta.
-4. "chartData": Un array de datos simulados o reales de las condiciones para graficar. Cada objeto debe tener "time" (ej: "08:00"), "windSpeed" (nudos), "waveHeight" (metros, si aplica, sino 0).`;
+4. "verdict": Un string con el "Veredicto Albatros". Esta es la recomendación final y definitiva, destacando la mejor opción absoluta.
+5. "chartData": Un array de datos simulados o reales de las condiciones para graficar. Cada objeto debe tener "time" (ej: "08:00"), "windSpeed" (nudos), "waveHeight" (metros, si aplica, sino 0).`;
 
 const AdSlot = ({ className = '' }: { className?: string }) => (
   <div className={`bg-slate-900/50 border border-slate-800 border-dashed flex flex-col items-center justify-center text-slate-500 text-sm p-4 rounded-xl ${className}`}>
@@ -48,42 +49,44 @@ const AdSlot = ({ className = '' }: { className?: string }) => (
   </div>
 );
 
-const SurferLoader = () => (
-  <div className="flex flex-col items-center justify-center space-y-8">
-    <motion.div
-      animate={{ y: [-5, 5, -5], rotate: [-3, 3, -3] }}
-      transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-      className="relative text-cyan-400"
-    >
-      <svg width="120" height="120" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        {/* Wave back */}
-        <motion.path 
-          d="M 0 65 Q 25 45 50 65 T 100 65" 
-          strokeOpacity="0.3"
-          animate={{ d: ["M 0 65 Q 25 45 50 65 T 100 65", "M 0 65 Q 25 85 50 65 T 100 65", "M 0 65 Q 25 45 50 65 T 100 65"] }}
-          transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-        />
-        {/* Surfer */}
-        <motion.g
-          animate={{ y: [-2, 2, -2], rotate: [-5, 5, -5] }}
-          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-        >
-          <path d="M 30 50 L 70 50" strokeWidth="3" />
-          <path d="M 50 50 L 50 30 L 40 20" />
-          <path d="M 50 35 L 60 25" />
-          <circle cx="40" cy="15" r="4" />
-        </motion.g>
-        {/* Wave front */}
-        <motion.path 
-          d="M -10 75 Q 20 55 50 75 T 110 75" 
-          animate={{ d: ["M -10 75 Q 20 55 50 75 T 110 75", "M -10 75 Q 20 95 50 75 T 110 75", "M -10 75 Q 20 55 50 75 T 110 75"] }}
-          transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-        />
-      </svg>
-    </motion.div>
+const RadarLoader = () => (
+  <div className="flex flex-col items-center justify-center space-y-10">
+    <div className="relative w-32 h-32 rounded-full border border-cyan-500/30 bg-slate-900/50 overflow-hidden shadow-[0_0_40px_rgba(6,182,212,0.15)] flex items-center justify-center">
+      {/* Radar grid lines */}
+      <div className="absolute inset-0 border-2 border-cyan-500/10 rounded-full m-4"></div>
+      <div className="absolute inset-0 border-2 border-cyan-500/10 rounded-full m-10"></div>
+      <div className="absolute w-full h-[1px] bg-cyan-500/20"></div>
+      <div className="absolute h-full w-[1px] bg-cyan-500/20"></div>
+      
+      {/* Sweeping radar beam */}
+      <motion.div 
+        className="absolute inset-0 rounded-full"
+        style={{
+          background: 'conic-gradient(from 0deg, transparent 70%, rgba(6, 182, 212, 0.1) 80%, rgba(6, 182, 212, 0.5) 100%)'
+        }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+      />
+      
+      {/* Blips */}
+      <motion.div 
+        className="absolute w-2 h-2 bg-cyan-400 rounded-full shadow-[0_0_10px_#22d3ee]"
+        style={{ top: '30%', left: '60%' }}
+        animate={{ opacity: [0, 1, 0], scale: [0.5, 1.5, 0.5] }}
+        transition={{ duration: 2.5, repeat: Infinity, times: [0, 0.1, 1] }}
+      />
+      <motion.div 
+        className="absolute w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_10px_#60a5fa]"
+        style={{ top: '65%', left: '35%' }}
+        animate={{ opacity: [0, 1, 0], scale: [0.5, 1.5, 0.5] }}
+        transition={{ duration: 2.5, repeat: Infinity, delay: 1, times: [0, 0.1, 1] }}
+      />
+      
+      <Waves className="relative z-10 text-cyan-400 w-8 h-8 opacity-80" />
+    </div>
     <div className="flex flex-col items-center gap-2">
       <h3 className="text-xl font-medium text-slate-200">Analizando el radar...</h3>
-      <p className="text-sm text-slate-400 animate-pulse">Cruzando datos de viento, mareas y geografía</p>
+      <p className="text-sm text-cyan-400/80 animate-pulse">Cruzando datos de viento, mareas y geografía</p>
     </div>
   </div>
 );
@@ -228,6 +231,7 @@ export default function App() {
                 }
               },
               radarAnalysis: { type: Type.STRING, description: "Análisis detallado en Markdown." },
+              verdict: { type: Type.STRING, description: "El Veredicto Albatros: La recomendación final y definitiva." },
               chartData: {
                 type: Type.ARRAY,
                 description: "Datos para los gráficos de viento y olas.",
@@ -242,7 +246,7 @@ export default function App() {
                 }
               }
             },
-            required: ["greeting", "bestSpots", "radarAnalysis", "chartData"],
+            required: ["greeting", "bestSpots", "radarAnalysis", "verdict", "chartData"],
           },
         },
       });
@@ -252,7 +256,11 @@ export default function App() {
       setResult(parsed);
     } catch (err: any) {
       console.error(err);
-      setError('Hubo un error al consultar a Albatros. Por favor, intentá de nuevo.');
+      if (err.message?.includes('429') || err.message?.includes('RESOURCE_EXHAUSTED')) {
+        setError('Límite de consultas gratuitas alcanzado. Por favor, esperá un minuto o revisá tu cuota de Gemini API.');
+      } else {
+        setError('Hubo un error al consultar a Albatros. Por favor, intentá de nuevo.');
+      }
     } finally {
       setLoading(false);
     }
@@ -289,21 +297,24 @@ export default function App() {
 
       {/* Intro Text with Video Background */}
       <section className="relative w-full overflow-hidden border-b border-slate-800">
-        <div className="absolute inset-0 w-full h-full z-0">
+        {/* Background Video */}
+        <div className="absolute inset-0 w-full h-full z-0 bg-slate-900">
           <video
             autoPlay
             loop
             muted
             playsInline
-            className="object-cover w-full h-full opacity-30"
+            className="object-cover w-full h-full"
           >
-            <source src="https://assets.mixkit.co/videos/preview/mixkit-surfer-riding-a-wave-1303-large.mp4" type="video/mp4" />
+            <source src="https://cdn.coverr.co/videos/coverr-surfing-through-the-waves-4262/1080p.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-slate-950/70 mix-blend-multiply"></div>
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-transparent to-slate-950"></div>
+          {/* Overlays for readability */}
+          <div className="absolute inset-0 bg-slate-950/50"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
         </div>
         
-        <div className="relative z-10 max-w-5xl mx-auto px-4 pt-16 pb-12 text-center">
+        {/* Content */}
+        <div className="relative z-10 max-w-5xl mx-auto px-4 pt-20 pb-16 text-center">
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight drop-shadow-lg">
             Encontrá tu spot perfecto con Albatros
           </h2>
@@ -535,7 +546,7 @@ export default function App() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="bg-slate-900/50 rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center text-center min-h-[400px]"
               >
-                <SurferLoader />
+                <RadarLoader />
               </motion.div>
             ) : result ? (
               <motion.div
@@ -597,7 +608,7 @@ export default function App() {
                     >
                       <TileLayer
                         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                       />
                       {allSpots.map((spot: any, index: number) => (
                         <Marker key={index} position={[spot.lat, spot.lng]}>
@@ -616,13 +627,26 @@ export default function App() {
                 {/* Ad Slot Middle */}
                 <AdSlot className="h-32 w-full mb-8" />
 
+                {/* Veredicto Albatros */}
+                {result.verdict && (
+                  <div className="mb-8 bg-gradient-to-br from-cyan-900/40 to-slate-900 border border-cyan-500/30 rounded-xl p-6 shadow-[0_0_30px_rgba(6,182,212,0.1)]">
+                    <h3 className="text-xl font-bold flex items-center gap-2 text-cyan-400 mb-3">
+                      <Target size={24} />
+                      Veredicto Albatros
+                    </h3>
+                    <p className="text-slate-200 leading-relaxed font-medium">
+                      {result.verdict}
+                    </p>
+                  </div>
+                )}
+
                 {/* Radar Analysis */}
                 <div className="mb-8">
                   <h3 className="text-xl font-semibold flex items-center gap-2 text-white border-b border-slate-800 pb-4 mb-4">
                     <Waves className="text-cyan-500" size={24} />
                     El Radar de Albatros (Análisis de Condiciones)
                   </h3>
-                  <div className="prose prose-invert prose-cyan max-w-none prose-headings:font-medium prose-h3:text-base prose-p:leading-relaxed prose-p:font-normal prose-p:text-sm md:prose-p:text-base prose-strong:font-medium prose-strong:text-slate-200 prose-a:text-cyan-400 hover:prose-a:text-cyan-300 text-slate-300">
+                  <div className="prose prose-invert prose-cyan max-w-none prose-headings:font-medium prose-h3:text-base prose-p:leading-relaxed prose-p:font-normal prose-p:text-sm md:prose-p:text-base prose-strong:font-medium prose-strong:text-slate-200 prose-a:text-cyan-400 hover:prose-a:text-cyan-300 text-slate-300 font-normal">
                     <ReactMarkdown>{result.radarAnalysis}</ReactMarkdown>
                   </div>
                 </div>

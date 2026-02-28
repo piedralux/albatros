@@ -20,6 +20,27 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
+const MOCK_RESULT = {
+  greeting: "¡Aloha, rider! Te compartimos un análisis de demostración (la API está saturada) para tu sesión.",
+  bestSpots: [
+    {
+      timeWindow: "Hoy (14:00 a 18:00)",
+      spots: [
+        { name: "Playa Grande", description: "Olas consistentes, viento offshore suave. Ideal para la tarde.", lat: -38.0267, lng: -57.5316 },
+        { name: "Waikiki", description: "Mar ordenado, perfecto para longboard o principiantes.", lat: -38.0555, lng: -57.5400 }
+      ]
+    }
+  ],
+  radarAnalysis: "### Análisis de Demostración\n\nDebido a la alta demanda actual en los servidores de inteligencia artificial, te estamos mostrando un reporte simulado para que veas cómo funciona Albatros.\n\n- **Viento:** Offshore a 10 nudos, rotando al sur hacia la tarde.\n- **Swell:** Sudoeste, 1.5 metros con período de 11 segundos.\n- **Marea:** Subiendo hasta las 16:00 hs, lo que va a empujar buenas series.",
+  verdict: "Veredicto Albatros: Mandate a Playa Grande a media tarde. ¡Las condiciones están épicas para meterse al agua!",
+  chartData: [
+    { time: "12:00", windSpeed: 12, waveHeight: 1.2 },
+    { time: "14:00", windSpeed: 10, waveHeight: 1.5 },
+    { time: "16:00", windSpeed: 8, waveHeight: 1.6 },
+    { time: "18:00", windSpeed: 15, waveHeight: 1.4 }
+  ]
+};
+
 const SYSTEM_INSTRUCTION = `Rol: Sos Albatros, un asesor experto en deportes acuáticos (Bodyboard, Surf, Windsurf, SUP, Kitesurf, Náutica, Wave runner, Jet ski, Esquí acuático y Wakeboard). Tu rango de acción abarca CUALQUIER superficie con agua de la República Argentina (costa atlántica, ríos, lagos y lagunas). Considerá que muchas de estas superficies (especialmente en el sur) se congelan o tienen temperaturas extremas en invierno.
 
 Reglas de Análisis (El Protocolo Albatros):
@@ -282,7 +303,9 @@ export default function App() {
     } catch (err: any) {
       console.error(err);
       if (err.message?.includes('429') || err.message?.includes('RESOURCE_EXHAUSTED')) {
-        setError('Límite de consultas gratuitas alcanzado. Por favor, esperá un minuto o revisá tu cuota de Gemini API.');
+        console.warn("Rate limit hit. Using mock data.");
+        setResult(MOCK_RESULT);
+        setError('⚠️ Límite de consultas gratuitas de Google alcanzado. Te mostramos un reporte de demostración para que veas cómo funciona.');
       } else {
         setError('Hubo un error al consultar a Albatros. Por favor, intentá de nuevo.');
       }
@@ -337,6 +360,7 @@ export default function App() {
                   class="object-cover w-full h-full opacity-80"
                 >
                   <source src="/surf-bg.mp4" type="video/mp4" />
+                  <source src="https://cdn.pixabay.com/video/2016/11/22/13/47/6521-193306103_medium.mp4" type="video/mp4" />
                 </video>
               `
             }}

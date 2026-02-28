@@ -48,6 +48,46 @@ const AdSlot = ({ className = '' }: { className?: string }) => (
   </div>
 );
 
+const SurferLoader = () => (
+  <div className="flex flex-col items-center justify-center space-y-8">
+    <motion.div
+      animate={{ y: [-5, 5, -5], rotate: [-3, 3, -3] }}
+      transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+      className="relative text-cyan-400"
+    >
+      <svg width="120" height="120" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {/* Wave back */}
+        <motion.path 
+          d="M 0 65 Q 25 45 50 65 T 100 65" 
+          strokeOpacity="0.3"
+          animate={{ d: ["M 0 65 Q 25 45 50 65 T 100 65", "M 0 65 Q 25 85 50 65 T 100 65", "M 0 65 Q 25 45 50 65 T 100 65"] }}
+          transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+        />
+        {/* Surfer */}
+        <motion.g
+          animate={{ y: [-2, 2, -2], rotate: [-5, 5, -5] }}
+          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+        >
+          <path d="M 30 50 L 70 50" strokeWidth="3" />
+          <path d="M 50 50 L 50 30 L 40 20" />
+          <path d="M 50 35 L 60 25" />
+          <circle cx="40" cy="15" r="4" />
+        </motion.g>
+        {/* Wave front */}
+        <motion.path 
+          d="M -10 75 Q 20 55 50 75 T 110 75" 
+          animate={{ d: ["M -10 75 Q 20 55 50 75 T 110 75", "M -10 75 Q 20 95 50 75 T 110 75", "M -10 75 Q 20 55 50 75 T 110 75"] }}
+          transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+        />
+      </svg>
+    </motion.div>
+    <div className="flex flex-col items-center gap-2">
+      <h3 className="text-xl font-medium text-slate-200">Analizando el radar...</h3>
+      <p className="text-sm text-slate-400 animate-pulse">Cruzando datos de viento, mareas y geografía</p>
+    </div>
+  </div>
+);
+
 export default function App() {
   const getTomorrowDate = () => {
     const d = new Date();
@@ -71,6 +111,25 @@ export default function App() {
   const [error, setError] = useState('');
   const [showCharts, setShowCharts] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (loading) {
+      setProgress(0);
+      interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 95) return 95;
+          return prev + Math.random() * 15;
+        });
+      }, 800);
+    } else {
+      setProgress(100);
+      const timeout = setTimeout(() => setProgress(0), 500);
+      return () => clearTimeout(timeout);
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
 
   const getDayOfWeek = (dateString: string) => {
     if (!dateString) return '';
@@ -217,26 +276,44 @@ export default function App() {
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-cyan-900 selection:text-cyan-50">
       {/* Header */}
       <header className="bg-slate-950/80 backdrop-blur-md border-b border-slate-800 text-white py-4 px-4 sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto flex items-center gap-3">
+        <div className="max-w-5xl mx-auto flex items-center justify-center gap-3">
           <div className="bg-cyan-500/10 p-2.5 rounded-xl text-cyan-400 border border-cyan-500/20">
             <Waves size={24} strokeWidth={2.5} />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">Albatros</h1>
-            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Radar Acuático</p>
+          <div className="flex flex-col items-center">
+            <h1 className="text-2xl font-bold tracking-tight text-white leading-none">Albatros</h1>
+            <p className="text-slate-400 text-[10px] font-medium uppercase tracking-widest mt-1">Radar Acuático</p>
           </div>
         </div>
       </header>
 
-      {/* Intro Text */}
-      <section className="max-w-5xl mx-auto px-4 pt-12 pb-6 text-center">
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 tracking-tight">Encontrá tu spot perfecto con Albatros</h2>
-        <p className="text-cyan-400 font-medium max-w-2xl mx-auto text-lg md:text-xl leading-relaxed mb-4">
-          Ingresá tus parámetros y obtené recomendaciones de precisión quirúrgica para tu próxima sesión en el agua
-        </p>
-        <p className="text-slate-400 max-w-2xl mx-auto text-sm md:text-base leading-relaxed">
-          Albatros cruza datos meteorológicos en tiempo real con la geografía de cada spot en Argentina y te da la mejor recomendación para un gran momento acuático.
-        </p>
+      {/* Intro Text with Video Background */}
+      <section className="relative w-full overflow-hidden border-b border-slate-800">
+        <div className="absolute inset-0 w-full h-full z-0">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="object-cover w-full h-full opacity-30"
+          >
+            <source src="https://assets.mixkit.co/videos/preview/mixkit-surfer-riding-a-wave-1303-large.mp4" type="video/mp4" />
+          </video>
+          <div className="absolute inset-0 bg-slate-950/70 mix-blend-multiply"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-transparent to-slate-950"></div>
+        </div>
+        
+        <div className="relative z-10 max-w-5xl mx-auto px-4 pt-16 pb-12 text-center">
+          <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight drop-shadow-lg">
+            Encontrá tu spot perfecto con Albatros
+          </h2>
+          <p className="text-cyan-300 font-medium max-w-2xl mx-auto text-lg md:text-xl leading-relaxed mb-4 drop-shadow-md">
+            Ingresá tus parámetros y obtené recomendaciones de precisión quirúrgica para tu próxima sesión en el agua
+          </p>
+          <p className="text-slate-300 max-w-2xl mx-auto text-sm md:text-base leading-relaxed drop-shadow">
+            Albatros cruza datos meteorológicos en tiempo real con la geografía de cada spot en Argentina y te da la mejor recomendación para un gran momento acuático.
+          </p>
+        </div>
       </section>
 
       {/* Top Ad Slots */}
@@ -419,19 +496,27 @@ export default function App() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-900/20"
+              className="relative w-full bg-cyan-600 hover:bg-cyan-500 text-white font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed shadow-lg shadow-cyan-900/20 overflow-hidden"
             >
-              {loading ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  Analizando el radar...
-                </>
-              ) : (
-                <>
-                  <Wind size={18} />
-                  Consultar a Albatros
-                </>
+              {loading && (
+                <div 
+                  className="absolute left-0 top-0 bottom-0 bg-cyan-400/30 transition-all duration-500 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
               )}
+              <div className="relative z-10 flex items-center gap-2">
+                {loading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    <span>Analizando... {Math.round(progress)}%</span>
+                  </>
+                ) : (
+                  <>
+                    <Wind size={18} />
+                    <span>Consultar a Albatros</span>
+                  </>
+                )}
+              </div>
             </button>
           </form>
 
@@ -442,7 +527,17 @@ export default function App() {
         {/* Results Section */}
         <section className="lg:col-span-7">
           <AnimatePresence mode="wait">
-            {result ? (
+            {loading ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-slate-900/50 rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center text-center min-h-[400px]"
+              >
+                <SurferLoader />
+              </motion.div>
+            ) : result ? (
               <motion.div
                 key="result"
                 initial={{ opacity: 0, y: 10 }}

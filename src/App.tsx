@@ -23,34 +23,55 @@ L.Marker.prototype.options.icon = DefaultIcon;
 const MOCK_RESULT = {
   greeting: "¡Aloha, rider! Te compartimos un análisis de demostración (la API está saturada) para tu sesión.",
   astronomy: { sunrise: "06:15", sunset: "19:30" },
-  forecast: [
-    { time: "Hoy 09:00", windSpeed: 8, windDirection: "NW", waveHeight: 1.2, wavePeriod: 11, temperature: 18, weatherDesc: "Soleado" },
-    { time: "Hoy 12:00", windSpeed: 12, windDirection: "WNW", waveHeight: 1.3, wavePeriod: 11, temperature: 22, weatherDesc: "Mayormente soleado" },
-    { time: "Hoy 15:00", windSpeed: 16, windDirection: "S", waveHeight: 1.5, wavePeriod: 10, temperature: 24, weatherDesc: "Parcialmente nublado" },
-    { time: "Mañ 09:00", windSpeed: 14, windDirection: "SSE", waveHeight: 1.4, wavePeriod: 10, temperature: 20, weatherDesc: "Nublado" }
-  ],
-  bestSpots: [
+  dailyResults: [
     {
-      timeWindow: "Hoy (14:00 a 18:00)",
-      spots: [
-        { name: "Playa Grande", description: "Olas consistentes, viento offshore suave. Ideal para la tarde.", lat: -38.0267, lng: -57.5316 },
-        { name: "Waikiki", description: "Mar ordenado, perfecto para longboard o principiantes.", lat: -38.0555, lng: -57.5400 }
-      ]
+      date: "2026-03-03",
+      dayName: "Martes 3",
+      forecast: [
+        { time: "09:00", windSpeed: 8, windDirection: "NW", waveHeight: 1.2, wavePeriod: 11, temperature: 18, weatherDesc: "Soleado" },
+        { time: "15:00", windSpeed: 12, windDirection: "WNW", waveHeight: 1.3, wavePeriod: 11, temperature: 22, weatherDesc: "Mayormente soleado" }
+      ],
+      bestSpots: [
+        {
+          timeWindow: "Mañana (08:00 a 12:00)",
+          spots: [
+            { name: "Playa Grande", description: "Olas consistentes, viento offshore suave.", lat: -38.0267, lng: -57.5316 }
+          ]
+        }
+      ],
+      verdict: "Condiciones épicas por la mañana en Playa Grande."
+    },
+    {
+      date: "2026-03-04",
+      dayName: "Miércoles 4",
+      forecast: [
+        { time: "09:00", windSpeed: 15, windDirection: "S", waveHeight: 1.5, wavePeriod: 10, temperature: 17, weatherDesc: "Nublado" },
+        { time: "15:00", windSpeed: 18, windDirection: "S", waveHeight: 1.8, wavePeriod: 9, temperature: 19, weatherDesc: "Lluvia débil" }
+      ],
+      bestSpots: [
+        {
+          timeWindow: "Tarde (13:00 a 17:00)",
+          spots: [
+            { name: "Waikiki", description: "Reparo del viento sur, ideal para longboard.", lat: -38.0555, lng: -57.5400 }
+          ]
+        }
+      ],
+      verdict: "Buscá reparo en Waikiki, el viento sur va a romper el mar abierto."
     }
-  ],
-  verdict: "Veredicto Albatros: Mandate a Playa Grande a media tarde. ¡Las condiciones están épicas para meterse al agua!"
+  ]
 };
 
 const SYSTEM_INSTRUCTION = `Rol: Sos Albatros, un asesor experto en deportes acuáticos (Bodyboard, Surf, Windsurf, SUP, Kitesurf, Náutica, Wave runner, Jet ski, Esquí acuático y Wakeboard). Tu rango de acción abarca CUALQUIER superficie con agua de la República Argentina (costa atlántica, ríos, lagos y lagunas). Considerá que muchas de estas superficies (especialmente en el sur) se congelan o tienen temperaturas extremas en invierno.
 
 Reglas de Análisis (El Protocolo Albatros):
 - Brevedad (CRÍTICO): Para reducir el tiempo de respuesta, mantén las descripciones muy breves (máximo 15 palabras por spot). No generes texto de relleno.
-- Coordenadas Exactas (CRÍTICO): ¡NO uses coordenadas del centro de las ciudades! Los pines deben caer EXACTAMENTE en el agua.
+- Coordenadas Exactas (CRÍTICO): ¡NO uses coordenadas del centro de las ciudades! Los pines deben caer EXACTAMENTE en la línea de costa (donde rompen las olas), NO mar adentro ni en el medio de la ciudad.
   Ejemplos de corrección obligatoria:
-  - Miramar centro es -38.268, -57.836 -> El spot "Punta Hermengo" DEBE estar en el agua en -38.285, -57.828.
-  - Mar del Plata centro es -38.000, -57.550 -> "Playa Grande" DEBE estar en -38.026, -57.531.
-  Siempre ajusta la latitud y longitud para que el punto caiga en el mar (en la costa atlántica de Buenos Aires, suma a la longitud para ir más al Este).
-- Tabla de Pronóstico: Genera un pronóstico detallado por franjas horarias (máximo 8 franjas). El campo "time" DEBE incluir el día corto y la hora (ej: "Hoy 15:00", "Mié 09:00").
+  - Miramar centro es -38.268, -57.836 -> El spot "Punta Hermengo" DEBE estar en la costa en -38.285, -57.828.
+  - Mar del Plata centro es -38.000, -57.550 -> "Playa Grande" DEBE estar en la costa en -38.026, -57.531.
+  Usa las coordenadas REALES de la playa. Si no las sabes exactamente, usa las de la ciudad pero NO inventes desplazamientos exagerados mar adentro. El pin debe estar justo en la intersección entre la tierra y el agua.
+- Resultados por Día: DEBES generar un análisis completo (pronóstico, spots y veredicto) para CADA UNO de los días dentro del rango de fechas solicitado.
+- Tabla de Pronóstico: Genera un pronóstico detallado por franjas horarias para cada día (máximo 4 franjas por día). El campo "time" solo necesita la hora (ej: "09:00", "15:00").
 - Astronomía: Incluye la hora estimada de amanecer y atardecer para la ubicación y época del año.
 - Morfología del Spot (Prioridad 1): Antes de recomendar, analizá la forma de la costa, río o lago. Evitá bahías cerradas si el swell es pequeño. Buscá escolleras para rebote (Bodyboard) o playas abiertas para fuerza (Surf).
 - Cruce Swell/Viento-Dirección: Verificá si la dirección del Swell o Viento entra limpia en la orientación de la playa/costa.
@@ -63,11 +84,12 @@ Reglas de Análisis (El Protocolo Albatros):
 El output para el usuario debe ser un objeto JSON que contenga:
 1. "greeting": Un saludo inicial. DEBE empezar con "¡Aloha, [apodo del deporte]!" (ej: rider, surfer, kiter, remero) seguido de "Te compartimos el análisis para tu sesión de [Deporte] en [Ubicación]."
 2. "astronomy": Un objeto con "sunrise" (ej: "06:30") y "sunset" (ej: "19:45").
-3. "forecast": Un array de objetos con el pronóstico por horas (máximo 8 franjas horarias). Cada objeto debe tener "time" (ej: "Hoy 09:00" o "Mié 15:00"), "windSpeed" (nudos), "windDirection" (ej: "NW"), "waveHeight" (metros, 0 si no aplica), "wavePeriod" (segundos, 0 si no aplica), "temperature" (°C) y "weatherDesc" (ej: "Soleado").
-4. "bestSpots": Un array de objetos agrupados por momento del día. Cada objeto tiene:
-   - "timeWindow": Ej: "Sábado (13:30 a 16:30)"
-   - "spots": Array de spots recomendados para ese momento, ordenados por calidad (máximo 3 spots). Cada spot tiene "name", "description" (explicación MUY corta), "lat" y "lng".
-5. "verdict": Un string con el "Veredicto Albatros". Esta es la recomendación final y definitiva, destacando la mejor opción absoluta en máximo 2 oraciones.`;
+3. "dailyResults": Un array de objetos, UNO POR CADA DÍA del rango solicitado. Cada objeto tiene:
+   - "date": Fecha (ej: "2026-03-03")
+   - "dayName": Nombre del día (ej: "Martes 3")
+   - "forecast": Array con el pronóstico por horas de ESE día. Cada objeto debe tener "time" (ej: "09:00"), "windSpeed" (nudos), "windDirection" (ej: "NW"), "waveHeight" (metros, 0 si no aplica), "wavePeriod" (segundos, 0 si no aplica), "temperature" (°C) y "weatherDesc" (ej: "Soleado").
+   - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. Cada objeto tiene "timeWindow" y "spots" (máximo 3 spots). Cada spot tiene "name", "description" (explicación MUY corta), "lat" y "lng".
+   - "verdict": Veredicto corto para ESE día (máximo 2 oraciones).`;
 
 const AdSlot = ({ className = '' }: { className?: string }) => (
   <div className={`bg-slate-900/50 border border-slate-800 border-dashed flex flex-col items-center justify-center text-slate-500 text-sm p-4 rounded-xl ${className}`}>
@@ -140,13 +162,6 @@ const getPeriodColor = (period: number) => {
   return 'bg-purple-900/50 text-purple-300';
 };
 
-const isNewDay = (forecasts: any[], currentIndex: number) => {
-  if (currentIndex === 0) return false;
-  const currentDay = forecasts[currentIndex].time.split(' ')[0];
-  const prevDay = forecasts[currentIndex - 1].time.split(' ')[0];
-  return currentDay !== prevDay;
-};
-
 export default function App() {
   const getTomorrowDate = () => {
     const d = new Date();
@@ -172,6 +187,13 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [progress, setProgress] = useState(0);
   const [hasAutoSubmitted, setHasAutoSubmitted] = useState(false);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+
+  useEffect(() => {
+    if (result) {
+      setSelectedDayIndex(0);
+    }
+  }, [result]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -295,51 +317,63 @@ export default function App() {
                 },
                 required: ["sunrise", "sunset"]
               },
-              forecast: {
+              dailyResults: {
                 type: Type.ARRAY,
-                description: "Pronóstico detallado por horas para armar la tabla estilo Windguru.",
+                description: "Resultados agrupados por día. DEBE haber un objeto por cada día en el rango solicitado.",
                 items: {
                   type: Type.OBJECT,
                   properties: {
-                    time: { type: Type.STRING, description: "Día y Hora (ej: 'Hoy 09:00' o 'Mié 15:00')" },
-                    windSpeed: { type: Type.NUMBER, description: "Velocidad del viento en nudos" },
-                    windDirection: { type: Type.STRING, description: "Dirección del viento (ej: NW, S, SE)" },
-                    waveHeight: { type: Type.NUMBER, description: "Altura de la ola en metros" },
-                    wavePeriod: { type: Type.NUMBER, description: "Período de la ola en segundos" },
-                    temperature: { type: Type.NUMBER, description: "Temperatura ambiente en °C" },
-                    weatherDesc: { type: Type.STRING, description: "Descripción corta del clima (ej: Soleado, Nublado, Lluvia)" }
-                  },
-                  required: ["time", "windSpeed", "windDirection", "waveHeight", "wavePeriod", "temperature", "weatherDesc"]
-                }
-              },
-              bestSpots: {
-                type: Type.ARRAY,
-                description: "Los mejores spots agrupados por franja horaria.",
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    timeWindow: { type: Type.STRING, description: "Día y franja horaria, ej: Sábado (13:30 a 16:30)" },
-                    spots: {
+                    date: { type: Type.STRING, description: "Fecha (ej: 2026-03-03)" },
+                    dayName: { type: Type.STRING, description: "Nombre del día (ej: Martes 3)" },
+                    forecast: {
                       type: Type.ARRAY,
-                      description: "Spots recomendados en este horario, ordenados por calidad.",
+                      description: "Pronóstico detallado por horas para este día (máximo 4 franjas).",
                       items: {
                         type: Type.OBJECT,
                         properties: {
-                          name: { type: Type.STRING },
-                          description: { type: Type.STRING, description: "Máximo 15 palabras." },
-                          lat: { type: Type.NUMBER },
-                          lng: { type: Type.NUMBER },
+                          time: { type: Type.STRING, description: "Hora (ej: '09:00')" },
+                          windSpeed: { type: Type.NUMBER, description: "Velocidad del viento en nudos" },
+                          windDirection: { type: Type.STRING, description: "Dirección del viento (ej: NW, S, SE)" },
+                          waveHeight: { type: Type.NUMBER, description: "Altura de la ola en metros" },
+                          wavePeriod: { type: Type.NUMBER, description: "Período de la ola en segundos" },
+                          temperature: { type: Type.NUMBER, description: "Temperatura ambiente en °C" },
+                          weatherDesc: { type: Type.STRING, description: "Descripción corta del clima (ej: Soleado, Nublado, Lluvia)" }
                         },
-                        required: ["name", "description", "lat", "lng"]
+                        required: ["time", "windSpeed", "windDirection", "waveHeight", "wavePeriod", "temperature", "weatherDesc"]
                       }
-                    }
+                    },
+                    bestSpots: {
+                      type: Type.ARRAY,
+                      description: "Los mejores spots para este día agrupados por franja horaria.",
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          timeWindow: { type: Type.STRING, description: "Franja horaria, ej: Mañana (08:00 a 12:00)" },
+                          spots: {
+                            type: Type.ARRAY,
+                            description: "Spots recomendados en este horario, ordenados por calidad.",
+                            items: {
+                              type: Type.OBJECT,
+                              properties: {
+                                name: { type: Type.STRING },
+                                description: { type: Type.STRING, description: "Máximo 15 palabras." },
+                                lat: { type: Type.NUMBER },
+                                lng: { type: Type.NUMBER },
+                              },
+                              required: ["name", "description", "lat", "lng"]
+                            }
+                          }
+                        },
+                        required: ["timeWindow", "spots"]
+                      }
+                    },
+                    verdict: { type: Type.STRING, description: "Veredicto corto para este día." }
                   },
-                  required: ["timeWindow", "spots"]
+                  required: ["date", "dayName", "forecast", "bestSpots", "verdict"]
                 }
-              },
-              verdict: { type: Type.STRING, description: "El Veredicto Albatros: La recomendación final y definitiva (máximo 2 oraciones)." }
+              }
             },
-            required: ["greeting", "astronomy", "forecast", "bestSpots", "verdict"],
+            required: ["greeting", "astronomy", "dailyResults"],
           },
         },
       });
@@ -363,9 +397,6 @@ export default function App() {
       setLoading(false);
     }
   };
-
-  // Extraer todos los spots para el mapa
-  const allSpots = result?.bestSpots?.flatMap((window: any) => window.spots) || [];
 
   // Auto-submit on load if URL has parameters
   useEffect(() => {
@@ -673,197 +704,235 @@ export default function App() {
                   </h2>
                 </div>
 
-                {/* Integrated Dashboard (Windguru Style Table) */}
-                {result.forecast && result.forecast.length > 0 && (
-                  <div className="bg-slate-950/40 border border-slate-800 rounded-xl overflow-hidden mb-6 shadow-lg">
-                    <div className="p-2.5 border-b border-slate-800/50 bg-slate-900/50 flex justify-between items-center">
-                      <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                        <Activity size={14} className="text-cyan-500" />
-                        Pronóstico Detallado
-                      </h3>
-                      {result.astronomy && (
-                        <div className="flex items-center gap-3 text-[10px] md:text-xs text-slate-400 font-medium">
-                          <span className="flex items-center gap-1" title="Amanecer"><Sun size={12} className="text-yellow-500"/> {result.astronomy.sunrise}</span>
-                          <span className="flex items-center gap-1" title="Atardecer"><Moon size={12} className="text-indigo-400"/> {result.astronomy.sunset}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-[11px] md:text-xs text-left whitespace-nowrap font-sans tracking-tight">
-                        <thead>
-                          <tr className="bg-slate-900/30 border-b border-slate-800/50">
-                            <th className="px-3 py-2 font-medium text-slate-400 sticky left-0 bg-slate-900/90 z-10 border-r border-slate-800/50">Día/Hora</th>
-                            {result.forecast.map((f: any, i: number) => (
-                              <th key={i} className={`px-2 py-2 font-medium text-slate-200 text-center ${isNewDay(result.forecast, i) ? 'border-l-2 border-dashed border-slate-700/50' : ''}`}>{f.time}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/50">
-                          {/* Viento */}
-                          <tr className="hover:bg-slate-900/20">
-                            <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
-                              <Wind size={12} className="text-teal-400" /> Viento (kts)
-                            </td>
-                            {result.forecast.map((f: any, i: number) => (
-                              <td key={i} className={`px-1 py-1.5 text-center ${isNewDay(result.forecast, i) ? 'border-l-2 border-dashed border-slate-700/50' : ''}`}>
-                                <div className={`inline-block px-1.5 py-0.5 rounded font-medium ${getWindColor(f.windSpeed)}`}>
-                                  {f.windSpeed}
-                                </div>
-                              </td>
-                            ))}
-                          </tr>
-                          {/* Dirección */}
-                          <tr className="hover:bg-slate-900/20">
-                            <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
-                              <Navigation size={12} className="text-slate-500" /> Dirección
-                            </td>
-                            {result.forecast.map((f: any, i: number) => (
-                              <td key={i} className={`px-2 py-1.5 text-center font-normal text-slate-300 ${isNewDay(result.forecast, i) ? 'border-l-2 border-dashed border-slate-700/50' : ''}`}>
-                                {f.windDirection}
-                              </td>
-                            ))}
-                          </tr>
-                          {/* Olas */}
-                          <tr className="hover:bg-slate-900/20">
-                            <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
-                              <Waves size={12} className="text-blue-400" /> Olas (m)
-                            </td>
-                            {result.forecast.map((f: any, i: number) => (
-                              <td key={i} className={`px-1 py-1.5 text-center ${isNewDay(result.forecast, i) ? 'border-l-2 border-dashed border-slate-700/50' : ''}`}>
-                                <div className={`inline-block px-1.5 py-0.5 rounded font-medium ${getWaveColor(f.waveHeight)}`}>
-                                  {f.waveHeight}
-                                </div>
-                              </td>
-                            ))}
-                          </tr>
-                          {/* Período */}
-                          <tr className="hover:bg-slate-900/20">
-                            <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
-                              <Activity size={12} className="text-indigo-400" /> Período (s)
-                            </td>
-                            {result.forecast.map((f: any, i: number) => (
-                              <td key={i} className={`px-1 py-1.5 text-center ${isNewDay(result.forecast, i) ? 'border-l-2 border-dashed border-slate-700/50' : ''}`}>
-                                <div className={`inline-block px-1.5 py-0.5 rounded font-medium ${getPeriodColor(f.wavePeriod)}`}>
-                                  {f.wavePeriod}
-                                </div>
-                              </td>
-                            ))}
-                          </tr>
-                          {/* Clima */}
-                          <tr className="hover:bg-slate-900/20">
-                            <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
-                              <Thermometer size={12} className="text-orange-400" /> Clima
-                            </td>
-                            {result.forecast.map((f: any, i: number) => (
-                              <td key={i} className={`px-2 py-1.5 text-center ${isNewDay(result.forecast, i) ? 'border-l-2 border-dashed border-slate-700/50' : ''}`}>
-                                <div className="text-slate-300 font-medium">{f.temperature}°C</div>
-                                <div className="text-[9px] text-slate-500 mt-0.5 uppercase tracking-tighter">{f.weatherDesc}</div>
-                              </td>
-                            ))}
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
+                {/* Tabs */}
+                {result.dailyResults && result.dailyResults.length > 0 && (
+                  <div className="flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide">
+                    {result.dailyResults.map((day: any, index: number) => (
+                      <button
+                        key={index}
+                        onClick={() => setSelectedDayIndex(index)}
+                        className={`px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-colors ${
+                          selectedDayIndex === index 
+                            ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/20' 
+                            : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-700/50'
+                        }`}
+                      >
+                        {day.dayName}
+                      </button>
+                    ))}
                   </div>
                 )}
 
-                {/* Disclaimer */}
-                <div className="mb-6 p-3 bg-slate-800/30 border border-slate-700/50 rounded-lg flex items-start gap-2 text-xs text-slate-400">
-                  <AlertCircle size={14} className="text-yellow-500/70 shrink-0 mt-0.5" />
-                  <p>
-                    <strong className="text-slate-300">Aviso:</strong> Las condiciones meteorológicas son dinámicas y pueden variar. 
-                    Te sugerimos volver a consultar a Albatros unas horas antes de tu sesión para obtener el pronóstico más actualizado.
-                  </p>
-                </div>
+                {/* Content for selected day */}
+                {result.dailyResults && result.dailyResults.length > 0 && (() => {
+                  const currentDay = result.dailyResults[selectedDayIndex];
+                  if (!currentDay) return null;
+                  
+                  // Extraer todos los spots para el mapa de ESTE día
+                  const currentSpots = currentDay.bestSpots?.flatMap((window: any) => window.spots) || [];
 
-                {/* Share Buttons (Between Dashboard and Report) */}
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-8">
-                  <button
-                    onClick={handleShare}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-medium transition-colors text-sm border border-slate-700"
-                  >
-                    {copied ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} className="text-cyan-400" />}
-                    {copied ? '¡Copiado!' : 'Copiar Link'}
-                  </button>
-                  <a
-                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent('¡Mirá el reporte de Albatros para mi próxima sesión! 🌊🏄‍♂️\n\n' + window.location.href)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] rounded-lg font-medium transition-colors text-sm border border-[#25D366]/20"
-                  >
-                    <Share2 size={16} />
-                    WhatsApp
-                  </a>
-                </div>
-                
-                {/* Spots List */}
-                <div className="space-y-6 mb-8">
-                  {result.bestSpots?.map((window: any, i: number) => (
-                    <div key={i} className="bg-slate-950/50 rounded-xl p-5 border border-slate-800">
-                      <h3 className="font-bold text-slate-200 mb-4 text-lg border-b border-slate-800 pb-2 flex items-center gap-2">
-                        <Calendar size={18} className="text-cyan-500" />
-                        {window.timeWindow}
-                      </h3>
-                      <div className="space-y-4">
-                        {window.spots?.map((spot: any, j: number) => (
-                          <div key={j} className="flex gap-3">
-                            <div className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold rounded-full w-6 h-6 flex items-center justify-center shrink-0 text-sm mt-0.5">
-                              {j + 1}
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-slate-200">{spot.name}</h4>
-                              <p className="text-slate-400 text-sm mt-1">{spot.description}</p>
+                  return (
+                    <motion.div
+                      key={selectedDayIndex}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex flex-col"
+                    >
+                      {/* Integrated Dashboard (Windguru Style Table) */}
+                      {currentDay.forecast && currentDay.forecast.length > 0 && (
+                        <div className="bg-slate-950/40 border border-slate-800 rounded-xl overflow-hidden mb-6 shadow-lg">
+                          <div className="p-2.5 border-b border-slate-800/50 bg-slate-900/50 flex justify-between items-center">
+                            <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                              <Activity size={14} className="text-cyan-500" />
+                              Pronóstico Detallado
+                            </h3>
+                            {result.astronomy && (
+                              <div className="flex items-center gap-3 text-[10px] md:text-xs text-slate-400 font-medium">
+                                <span className="flex items-center gap-1" title="Amanecer"><Sun size={12} className="text-yellow-500"/> {result.astronomy.sunrise}</span>
+                                <span className="flex items-center gap-1" title="Atardecer"><Moon size={12} className="text-indigo-400"/> {result.astronomy.sunset}</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-[11px] md:text-xs text-left whitespace-nowrap font-sans tracking-tight">
+                              <thead>
+                                <tr className="bg-slate-900/30 border-b border-slate-800/50">
+                                  <th className="px-3 py-2 font-medium text-slate-400 sticky left-0 bg-slate-900/90 z-10 border-r border-slate-800/50">Hora</th>
+                                  {currentDay.forecast.map((f: any, i: number) => (
+                                    <th key={i} className={`px-2 py-2 font-medium text-slate-200 text-center`}>{f.time}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-800/50">
+                                {/* Viento */}
+                                <tr className="hover:bg-slate-900/20">
+                                  <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
+                                    <Wind size={12} className="text-teal-400" /> Viento (kts)
+                                  </td>
+                                  {currentDay.forecast.map((f: any, i: number) => (
+                                    <td key={i} className={`px-1 py-1.5 text-center`}>
+                                      <div className={`inline-block px-1.5 py-0.5 rounded font-medium ${getWindColor(f.windSpeed)}`}>
+                                        {f.windSpeed}
+                                      </div>
+                                    </td>
+                                  ))}
+                                </tr>
+                                {/* Dirección */}
+                                <tr className="hover:bg-slate-900/20">
+                                  <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
+                                    <Navigation size={12} className="text-slate-500" /> Dirección
+                                  </td>
+                                  {currentDay.forecast.map((f: any, i: number) => (
+                                    <td key={i} className={`px-2 py-1.5 text-center font-normal text-slate-300`}>
+                                      {f.windDirection}
+                                    </td>
+                                  ))}
+                                </tr>
+                                {/* Olas */}
+                                <tr className="hover:bg-slate-900/20">
+                                  <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
+                                    <Waves size={12} className="text-blue-400" /> Olas (m)
+                                  </td>
+                                  {currentDay.forecast.map((f: any, i: number) => (
+                                    <td key={i} className={`px-1 py-1.5 text-center`}>
+                                      <div className={`inline-block px-1.5 py-0.5 rounded font-medium ${getWaveColor(f.waveHeight)}`}>
+                                        {f.waveHeight}
+                                      </div>
+                                    </td>
+                                  ))}
+                                </tr>
+                                {/* Período */}
+                                <tr className="hover:bg-slate-900/20">
+                                  <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
+                                    <Activity size={12} className="text-indigo-400" /> Período (s)
+                                  </td>
+                                  {currentDay.forecast.map((f: any, i: number) => (
+                                    <td key={i} className={`px-1 py-1.5 text-center`}>
+                                      <div className={`inline-block px-1.5 py-0.5 rounded font-medium ${getPeriodColor(f.wavePeriod)}`}>
+                                        {f.wavePeriod}
+                                      </div>
+                                    </td>
+                                  ))}
+                                </tr>
+                                {/* Clima */}
+                                <tr className="hover:bg-slate-900/20">
+                                  <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
+                                    <Thermometer size={12} className="text-orange-400" /> Clima
+                                  </td>
+                                  {currentDay.forecast.map((f: any, i: number) => (
+                                    <td key={i} className={`px-2 py-1.5 text-center`}>
+                                      <div className="text-slate-300 font-medium">{f.temperature}°C</div>
+                                      <div className="text-[9px] text-slate-500 mt-0.5 uppercase tracking-tighter">{f.weatherDesc}</div>
+                                    </td>
+                                  ))}
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Disclaimer */}
+                      <div className="mb-6 p-3 bg-slate-800/30 border border-slate-700/50 rounded-lg flex items-start gap-2 text-xs text-slate-400">
+                        <AlertCircle size={14} className="text-yellow-500/70 shrink-0 mt-0.5" />
+                        <p>
+                          <strong className="text-slate-300">Aviso:</strong> Las condiciones meteorológicas son dinámicas y pueden variar. 
+                          Te sugerimos volver a consultar a Albatros unas horas antes de tu sesión para obtener el pronóstico más actualizado.
+                        </p>
+                      </div>
+
+                      {/* Share Buttons (Between Dashboard and Report) */}
+                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-8">
+                        <button
+                          onClick={handleShare}
+                          className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-medium transition-colors text-sm border border-slate-700"
+                        >
+                          {copied ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} className="text-cyan-400" />}
+                          {copied ? '¡Copiado!' : 'Copiar Link'}
+                        </button>
+                        <a
+                          href={`https://api.whatsapp.com/send?text=${encodeURIComponent('¡Mirá el reporte de Albatros para mi próxima sesión! 🌊🏄‍♂️\n\n' + window.location.href)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-4 py-2 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] rounded-lg font-medium transition-colors text-sm border border-[#25D366]/20"
+                        >
+                          <Share2 size={16} />
+                          WhatsApp
+                        </a>
+                      </div>
+                      
+                      {/* Spots List */}
+                      <div className="space-y-6 mb-8">
+                        {currentDay.bestSpots?.map((window: any, i: number) => (
+                          <div key={i} className="bg-slate-950/50 rounded-xl p-5 border border-slate-800">
+                            <h3 className="font-bold text-slate-200 mb-4 text-lg border-b border-slate-800 pb-2 flex items-center gap-2">
+                              <Calendar size={18} className="text-cyan-500" />
+                              {window.timeWindow}
+                            </h3>
+                            <div className="space-y-4">
+                              {window.spots?.map((spot: any, j: number) => (
+                                <div key={j} className="flex gap-3">
+                                  <div className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold rounded-full w-6 h-6 flex items-center justify-center shrink-0 text-sm mt-0.5">
+                                    {j + 1}
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-slate-200">{spot.name}</h4>
+                                    <p className="text-slate-400 text-sm mt-1">{spot.description}</p>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  ))}
-                </div>
 
-                {/* Map */}
-                {allSpots.length > 0 && (
-                  <div className="h-64 md:h-80 w-full rounded-xl overflow-hidden border border-slate-800 shadow-inner z-0 relative mb-8">
-                    <MapContainer
-                      key={`${allSpots[0].lat}-${allSpots[0].lng}`}
-                      center={[allSpots[0].lat, allSpots[0].lng]}
-                      zoom={11}
-                      style={{ height: '100%', width: '100%', zIndex: 0 }}
-                    >
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                      />
-                      {allSpots.map((spot: any, index: number) => (
-                        <Marker key={index} position={[spot.lat, spot.lng]}>
-                          <Popup>
-                            <div className="font-sans">
-                              <h3 className="font-bold text-cyan-700 text-sm mb-1">{spot.name}</h3>
-                              <p className="text-xs text-slate-600 m-0 leading-tight">{spot.description}</p>
-                            </div>
-                          </Popup>
-                        </Marker>
-                      ))}
-                    </MapContainer>
-                  </div>
-                )}
+                      {/* Map */}
+                      {currentSpots.length > 0 && (
+                        <div className="h-64 md:h-80 w-full rounded-xl overflow-hidden border border-slate-800 shadow-inner z-0 relative mb-8">
+                          <MapContainer
+                            key={`${currentSpots[0].lat}-${currentSpots[0].lng}`}
+                            center={[currentSpots[0].lat, currentSpots[0].lng]}
+                            zoom={11}
+                            style={{ height: '100%', width: '100%', zIndex: 0 }}
+                          >
+                            <TileLayer
+                              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                            />
+                            {currentSpots.map((spot: any, index: number) => (
+                              <Marker key={index} position={[spot.lat, spot.lng]}>
+                                <Popup>
+                                  <div className="font-sans">
+                                    <h3 className="font-bold text-cyan-700 text-sm mb-1">{spot.name}</h3>
+                                    <p className="text-xs text-slate-600 m-0 leading-tight">{spot.description}</p>
+                                  </div>
+                                </Popup>
+                              </Marker>
+                            ))}
+                          </MapContainer>
+                        </div>
+                      )}
 
-                {/* Ad Slot Middle */}
-                <AdSlot className="h-32 w-full mb-8" />
+                      {/* Ad Slot Middle */}
+                      <AdSlot className="h-32 w-full mb-8" />
 
-                {/* Veredicto Albatros */}
-                {result.verdict && (
-                  <div className="mb-8 bg-gradient-to-br from-cyan-900/40 to-slate-900 border border-cyan-500/30 rounded-xl p-6 shadow-[0_0_30px_rgba(6,182,212,0.1)]">
-                    <h3 className="text-xl font-bold flex items-center gap-2 text-cyan-400 mb-3">
-                      <Target size={24} />
-                      Veredicto Albatros
-                    </h3>
-                    <p className="text-slate-200 leading-relaxed font-medium">
-                      {result.verdict}
-                    </p>
-                  </div>
-                )}
+                      {/* Veredicto Albatros */}
+                      {currentDay.verdict && (
+                        <div className="mb-8 bg-gradient-to-br from-cyan-900/40 to-slate-900 border border-cyan-500/30 rounded-xl p-6 shadow-[0_0_30px_rgba(6,182,212,0.1)]">
+                          <h3 className="text-xl font-bold flex items-center gap-2 text-cyan-400 mb-3">
+                            <Target size={24} />
+                            Veredicto Albatros
+                          </h3>
+                          <p className="text-slate-200 leading-relaxed font-medium">
+                            {currentDay.verdict}
+                          </p>
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })()}
 
                 {/* Share Buttons (Bottom) */}
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-8">

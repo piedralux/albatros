@@ -347,7 +347,7 @@ export default function App() {
         {/* Background Video (YouTube Iframe for 100% reliability) */}
         <div className="absolute inset-0 w-full h-full z-0 bg-slate-900 overflow-hidden pointer-events-none">
           <iframe
-            src="https://www.youtube.com/embed/qREKP9oijWI?autoplay=1&mute=1&controls=0&loop=1&playlist=qREKP9oijWI&modestbranding=1&showinfo=0&rel=0&iv_load_policy=3"
+            src="https://www.youtube.com/embed/1-jXh1E_9t4?autoplay=1&mute=1&controls=0&loop=1&playlist=1-jXh1E_9t4&modestbranding=1&showinfo=0&rel=0&iv_load_policy=3&start=25"
             className="absolute top-1/2 left-1/2 w-[300vw] h-[300vh] md:w-[150vw] md:h-[150vh] -translate-x-1/2 -translate-y-1/2 opacity-60 pointer-events-none"
             allow="autoplay; encrypted-media"
             frameBorder="0"

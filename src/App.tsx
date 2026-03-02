@@ -44,7 +44,11 @@ const SYSTEM_INSTRUCTION = `Rol: Sos Albatros, un asesor experto en deportes acu
 
 Reglas de Análisis (El Protocolo Albatros):
 - Brevedad (CRÍTICO): Para reducir el tiempo de respuesta, mantén las descripciones muy breves (máximo 15 palabras por spot). No generes texto de relleno.
-- Coordenadas Exactas (CRÍTICO): ¡NO uses coordenadas de ciudades! Busca la latitud y longitud EXACTA del SPOT DE SURF/KITE específico. Los pines deben caer EXACTAMENTE en el agua o en la arena. Si el spot es en la costa atlántica (ej: Miramar, Mar del Plata), el mar está al ESTE o SURESTE del centro. Ajusta la longitud sumando ~0.02 a la longitud del centro para asegurar que caiga en el agua.
+- Coordenadas Exactas (CRÍTICO): ¡NO uses coordenadas del centro de las ciudades! Los pines deben caer EXACTAMENTE en el agua.
+  Ejemplos de corrección obligatoria:
+  - Miramar centro es -38.268, -57.836 -> El spot "Punta Hermengo" DEBE estar en el agua en -38.285, -57.828.
+  - Mar del Plata centro es -38.000, -57.550 -> "Playa Grande" DEBE estar en -38.026, -57.531.
+  Siempre ajusta la latitud y longitud para que el punto caiga en el mar (en la costa atlántica de Buenos Aires, suma a la longitud para ir más al Este).
 - Tabla de Pronóstico: Genera un pronóstico detallado por franjas horarias. El campo "time" DEBE incluir el día y la hora (ej: "Hoy 15:00", "Mié 09:00").
 - Morfología del Spot (Prioridad 1): Antes de recomendar, analizá la forma de la costa, río o lago. Evitá bahías cerradas si el swell es pequeño. Buscá escolleras para rebote (Bodyboard) o playas abiertas para fuerza (Surf).
 - Cruce Swell/Viento-Dirección: Verificá si la dirección del Swell o Viento entra limpia en la orientación de la playa/costa.
@@ -157,6 +161,7 @@ export default function App() {
   const [showCharts, setShowCharts] = useState(false);
   const [copied, setCopied] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [hasAutoSubmitted, setHasAutoSubmitted] = useState(false);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -190,8 +195,8 @@ export default function App() {
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!location || !startDate || !startTime || !endDate || !endTime) {
       setError('Por favor, completá la ubicación, fechas y horarios.');
       return;
@@ -264,6 +269,7 @@ export default function App() {
         model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
+          temperature: 0, // Deterministic output for consistent forecasts
           systemInstruction: SYSTEM_INSTRUCTION,
           responseMimeType: "application/json",
           responseSchema: {
@@ -341,6 +347,15 @@ export default function App() {
 
   // Extraer todos los spots para el mapa
   const allSpots = result?.bestSpots?.flatMap((window: any) => window.spots) || [];
+
+  // Auto-submit on load if URL has parameters
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('loc') && !hasAutoSubmitted) {
+      setHasAutoSubmitted(true);
+      handleSubmit();
+    }
+  }, [hasAutoSubmitted, location, startDate, startTime, endDate, endTime, sport, mobility, objective]);
 
   const handleShare = async () => {
     const url = window.location.href;

@@ -238,7 +238,7 @@ export default function App() {
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,
@@ -355,7 +355,7 @@ export default function App() {
             poster="https://images.unsplash.com/photo-1502680390469-be75c86b636f?q=80&w=2070&auto=format&fit=crop"
             className="absolute inset-0 object-cover w-full h-full opacity-80"
           >
-            <source src="https://cdn.pixabay.com/video/2016/11/22/13/47/6521-193306103_medium.mp4" type="video/mp4" />
+            <source src="https://assets.mixkit.co/videos/preview/mixkit-waves-in-the-water-1164-large.mp4" type="video/mp4" />
           </video>
           {/* Overlays for readability */}
           <div className="absolute inset-0 bg-slate-950/50"></div>

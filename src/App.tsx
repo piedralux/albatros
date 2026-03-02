@@ -242,7 +242,6 @@ export default function App() {
         contents: prompt,
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,
-          tools: [{ googleSearch: {} }],
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -307,7 +306,7 @@ export default function App() {
         setResult(MOCK_RESULT);
         setError('⚠️ Límite de consultas gratuitas de Google alcanzado. Te mostramos un reporte de demostración para que veas cómo funciona.');
       } else {
-        setError('Hubo un error al consultar a Albatros. Por favor, intentá de nuevo.');
+        setError(`Hubo un error al consultar a Albatros (${err.message || 'Error desconocido'}). Por favor, intentá de nuevo.`);
       }
     } finally {
       setLoading(false);
@@ -344,26 +343,22 @@ export default function App() {
       </header>
 
       {/* Intro Text with Video Background */}
-      <section className="relative w-full overflow-hidden border-b border-slate-800">
-        {/* Background Video */}
-        <div className="absolute inset-0 w-full h-full z-0 bg-slate-900">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            poster="https://images.unsplash.com/photo-1502680390469-be75c86b636f?q=80&w=2070&auto=format&fit=crop"
-            className="absolute inset-0 object-cover w-full h-full opacity-80"
-          >
-            <source src="https://assets.mixkit.co/videos/preview/mixkit-waves-in-the-water-1164-large.mp4" type="video/mp4" />
-          </video>
+      <section className="relative w-full overflow-hidden border-b border-slate-800 h-[500px] flex items-center justify-center">
+        {/* Background Video (YouTube Iframe for 100% reliability) */}
+        <div className="absolute inset-0 w-full h-full z-0 bg-slate-900 overflow-hidden pointer-events-none">
+          <iframe
+            src="https://www.youtube.com/embed/qREKP9oijWI?autoplay=1&mute=1&controls=0&loop=1&playlist=qREKP9oijWI&modestbranding=1&showinfo=0&rel=0&iv_load_policy=3"
+            className="absolute top-1/2 left-1/2 w-[300vw] h-[300vh] md:w-[150vw] md:h-[150vh] -translate-x-1/2 -translate-y-1/2 opacity-60 pointer-events-none"
+            allow="autoplay; encrypted-media"
+            frameBorder="0"
+          ></iframe>
           {/* Overlays for readability */}
-          <div className="absolute inset-0 bg-slate-950/50"></div>
+          <div className="absolute inset-0 bg-slate-950/60"></div>
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
         </div>
         
         {/* Content */}
-        <div className="relative z-10 max-w-5xl mx-auto px-4 pt-20 pb-16 text-center">
+        <div className="relative z-10 max-w-5xl mx-auto px-4 text-center">
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight drop-shadow-lg">
             Encontrá tu spot perfecto con Albatros
           </h2>

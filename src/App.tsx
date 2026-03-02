@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
-import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud, CloudRain, Droplet, ArrowRight } from 'lucide-react';
+import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud, CloudRain, Droplet, ArrowRight, Sun, Moon, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -22,6 +22,7 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const MOCK_RESULT = {
   greeting: "¡Aloha, rider! Te compartimos un análisis de demostración (la API está saturada) para tu sesión.",
+  astronomy: { sunrise: "06:15", sunset: "19:30" },
   forecast: [
     { time: "Hoy 09:00", windSpeed: 8, windDirection: "NW", waveHeight: 1.2, wavePeriod: 11, temperature: 18, weatherDesc: "Soleado" },
     { time: "Hoy 12:00", windSpeed: 12, windDirection: "WNW", waveHeight: 1.3, wavePeriod: 11, temperature: 22, weatherDesc: "Mayormente soleado" },
@@ -49,7 +50,8 @@ Reglas de Análisis (El Protocolo Albatros):
   - Miramar centro es -38.268, -57.836 -> El spot "Punta Hermengo" DEBE estar en el agua en -38.285, -57.828.
   - Mar del Plata centro es -38.000, -57.550 -> "Playa Grande" DEBE estar en -38.026, -57.531.
   Siempre ajusta la latitud y longitud para que el punto caiga en el mar (en la costa atlántica de Buenos Aires, suma a la longitud para ir más al Este).
-- Tabla de Pronóstico: Genera un pronóstico detallado por franjas horarias. El campo "time" DEBE incluir el día y la hora (ej: "Hoy 15:00", "Mié 09:00").
+- Tabla de Pronóstico: Genera un pronóstico detallado por franjas horarias (máximo 8 franjas). El campo "time" DEBE incluir el día corto y la hora (ej: "Hoy 15:00", "Mié 09:00").
+- Astronomía: Incluye la hora estimada de amanecer y atardecer para la ubicación y época del año.
 - Morfología del Spot (Prioridad 1): Antes de recomendar, analizá la forma de la costa, río o lago. Evitá bahías cerradas si el swell es pequeño. Buscá escolleras para rebote (Bodyboard) o playas abiertas para fuerza (Surf).
 - Cruce Swell/Viento-Dirección: Verificá si la dirección del Swell o Viento entra limpia en la orientación de la playa/costa.
 - La Regla del Período (T): T < 7s: Mar movido, "fofo", rinde más para Windsurf si hay viento. T > 9s: Olas con fuerza y rampa. Ideal para Bodyboard.
@@ -60,11 +62,12 @@ Reglas de Análisis (El Protocolo Albatros):
 
 El output para el usuario debe ser un objeto JSON que contenga:
 1. "greeting": Un saludo inicial. DEBE empezar con "¡Aloha, [apodo del deporte]!" (ej: rider, surfer, kiter, remero) seguido de "Te compartimos el análisis para tu sesión de [Deporte] en [Ubicación]."
-2. "forecast": Un array de objetos con el pronóstico por horas (máximo 4 franjas horarias). Cada objeto debe tener "time" (ej: "Hoy 09:00" o "Mié 15:00"), "windSpeed" (nudos), "windDirection" (ej: "NW"), "waveHeight" (metros, 0 si no aplica), "wavePeriod" (segundos, 0 si no aplica), "temperature" (°C) y "weatherDesc" (ej: "Soleado").
-3. "bestSpots": Un array de objetos agrupados por momento del día. Cada objeto tiene:
+2. "astronomy": Un objeto con "sunrise" (ej: "06:30") y "sunset" (ej: "19:45").
+3. "forecast": Un array de objetos con el pronóstico por horas (máximo 8 franjas horarias). Cada objeto debe tener "time" (ej: "Hoy 09:00" o "Mié 15:00"), "windSpeed" (nudos), "windDirection" (ej: "NW"), "waveHeight" (metros, 0 si no aplica), "wavePeriod" (segundos, 0 si no aplica), "temperature" (°C) y "weatherDesc" (ej: "Soleado").
+4. "bestSpots": Un array de objetos agrupados por momento del día. Cada objeto tiene:
    - "timeWindow": Ej: "Sábado (13:30 a 16:30)"
    - "spots": Array de spots recomendados para ese momento, ordenados por calidad (máximo 3 spots). Cada spot tiene "name", "description" (explicación MUY corta), "lat" y "lng".
-4. "verdict": Un string con el "Veredicto Albatros". Esta es la recomendación final y definitiva, destacando la mejor opción absoluta en máximo 2 oraciones.`;
+5. "verdict": Un string con el "Veredicto Albatros". Esta es la recomendación final y definitiva, destacando la mejor opción absoluta en máximo 2 oraciones.`;
 
 const AdSlot = ({ className = '' }: { className?: string }) => (
   <div className={`bg-slate-900/50 border border-slate-800 border-dashed flex flex-col items-center justify-center text-slate-500 text-sm p-4 rounded-xl ${className}`}>
@@ -137,6 +140,13 @@ const getPeriodColor = (period: number) => {
   return 'bg-purple-900/50 text-purple-300';
 };
 
+const isNewDay = (forecasts: any[], currentIndex: number) => {
+  if (currentIndex === 0) return false;
+  const currentDay = forecasts[currentIndex].time.split(' ')[0];
+  const prevDay = forecasts[currentIndex - 1].time.split(' ')[0];
+  return currentDay !== prevDay;
+};
+
 export default function App() {
   const getTomorrowDate = () => {
     const d = new Date();
@@ -191,7 +201,7 @@ export default function App() {
   const getMaxEndDate = (startD: string) => {
     if (!startD) return undefined;
     const d = new Date(startD);
-    d.setDate(d.getDate() + 5);
+    d.setDate(d.getDate() + 3);
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
   };
 
@@ -206,8 +216,8 @@ export default function App() {
     const end = new Date(`${endDate}T${endTime}`);
     const diffDays = (end.getTime() - start.getTime()) / (1000 * 3600 * 24);
     
-    if (diffDays > 5) {
-      setError('El rango de fechas no puede superar los 5 días debido a la alta variabilidad de las condiciones.');
+    if (diffDays > 3) {
+      setError('El rango de fechas no puede superar los 3 días debido a la alta variabilidad de las condiciones.');
       return;
     }
     if (diffDays < 0) {
@@ -276,6 +286,15 @@ export default function App() {
             type: Type.OBJECT,
             properties: {
               greeting: { type: Type.STRING, description: "El saludo inicial." },
+              astronomy: {
+                type: Type.OBJECT,
+                description: "Horarios de luz solar.",
+                properties: {
+                  sunrise: { type: Type.STRING, description: "Hora de amanecer (ej: 06:30)" },
+                  sunset: { type: Type.STRING, description: "Hora de atardecer (ej: 19:45)" }
+                },
+                required: ["sunrise", "sunset"]
+              },
               forecast: {
                 type: Type.ARRAY,
                 description: "Pronóstico detallado por horas para armar la tabla estilo Windguru.",
@@ -320,7 +339,7 @@ export default function App() {
               },
               verdict: { type: Type.STRING, description: "El Veredicto Albatros: La recomendación final y definitiva (máximo 2 oraciones)." }
             },
-            required: ["greeting", "forecast", "bestSpots", "verdict"],
+            required: ["greeting", "astronomy", "forecast", "bestSpots", "verdict"],
           },
         },
       });
@@ -496,7 +515,7 @@ export default function App() {
 
                 {/* Hasta */}
                 <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 space-y-2">
-                  <span className="text-xs text-cyan-500 font-medium uppercase tracking-wider block">Hasta (Máx 5 días)</span>
+                  <span className="text-xs text-cyan-500 font-medium uppercase tracking-wider block">Hasta (Máx 3 días)</span>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-cyan-500/50 focus-within:border-cyan-500">
                       <span className="text-sm text-slate-400 font-medium w-8">{getDayOfWeek(endDate)}</span>
@@ -657,11 +676,17 @@ export default function App() {
                 {/* Integrated Dashboard (Windguru Style Table) */}
                 {result.forecast && result.forecast.length > 0 && (
                   <div className="bg-slate-950/40 border border-slate-800 rounded-xl overflow-hidden mb-6 shadow-lg">
-                    <div className="p-2.5 border-b border-slate-800/50 bg-slate-900/50">
+                    <div className="p-2.5 border-b border-slate-800/50 bg-slate-900/50 flex justify-between items-center">
                       <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                         <Activity size={14} className="text-cyan-500" />
                         Pronóstico Detallado
                       </h3>
+                      {result.astronomy && (
+                        <div className="flex items-center gap-3 text-[10px] md:text-xs text-slate-400 font-medium">
+                          <span className="flex items-center gap-1" title="Amanecer"><Sun size={12} className="text-yellow-500"/> {result.astronomy.sunrise}</span>
+                          <span className="flex items-center gap-1" title="Atardecer"><Moon size={12} className="text-indigo-400"/> {result.astronomy.sunset}</span>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="overflow-x-auto">
@@ -670,7 +695,7 @@ export default function App() {
                           <tr className="bg-slate-900/30 border-b border-slate-800/50">
                             <th className="px-3 py-2 font-medium text-slate-400 sticky left-0 bg-slate-900/90 z-10 border-r border-slate-800/50">Día/Hora</th>
                             {result.forecast.map((f: any, i: number) => (
-                              <th key={i} className="px-2 py-2 font-medium text-slate-200 text-center">{f.time}</th>
+                              <th key={i} className={`px-2 py-2 font-medium text-slate-200 text-center ${isNewDay(result.forecast, i) ? 'border-l-2 border-dashed border-slate-700/50' : ''}`}>{f.time}</th>
                             ))}
                           </tr>
                         </thead>
@@ -681,7 +706,7 @@ export default function App() {
                               <Wind size={12} className="text-teal-400" /> Viento (kts)
                             </td>
                             {result.forecast.map((f: any, i: number) => (
-                              <td key={i} className="px-1 py-1.5 text-center">
+                              <td key={i} className={`px-1 py-1.5 text-center ${isNewDay(result.forecast, i) ? 'border-l-2 border-dashed border-slate-700/50' : ''}`}>
                                 <div className={`inline-block px-1.5 py-0.5 rounded font-medium ${getWindColor(f.windSpeed)}`}>
                                   {f.windSpeed}
                                 </div>
@@ -694,7 +719,7 @@ export default function App() {
                               <Navigation size={12} className="text-slate-500" /> Dirección
                             </td>
                             {result.forecast.map((f: any, i: number) => (
-                              <td key={i} className="px-2 py-1.5 text-center font-normal text-slate-300">
+                              <td key={i} className={`px-2 py-1.5 text-center font-normal text-slate-300 ${isNewDay(result.forecast, i) ? 'border-l-2 border-dashed border-slate-700/50' : ''}`}>
                                 {f.windDirection}
                               </td>
                             ))}
@@ -705,7 +730,7 @@ export default function App() {
                               <Waves size={12} className="text-blue-400" /> Olas (m)
                             </td>
                             {result.forecast.map((f: any, i: number) => (
-                              <td key={i} className="px-1 py-1.5 text-center">
+                              <td key={i} className={`px-1 py-1.5 text-center ${isNewDay(result.forecast, i) ? 'border-l-2 border-dashed border-slate-700/50' : ''}`}>
                                 <div className={`inline-block px-1.5 py-0.5 rounded font-medium ${getWaveColor(f.waveHeight)}`}>
                                   {f.waveHeight}
                                 </div>
@@ -718,7 +743,7 @@ export default function App() {
                               <Activity size={12} className="text-indigo-400" /> Período (s)
                             </td>
                             {result.forecast.map((f: any, i: number) => (
-                              <td key={i} className="px-1 py-1.5 text-center">
+                              <td key={i} className={`px-1 py-1.5 text-center ${isNewDay(result.forecast, i) ? 'border-l-2 border-dashed border-slate-700/50' : ''}`}>
                                 <div className={`inline-block px-1.5 py-0.5 rounded font-medium ${getPeriodColor(f.wavePeriod)}`}>
                                   {f.wavePeriod}
                                 </div>
@@ -731,7 +756,7 @@ export default function App() {
                               <Thermometer size={12} className="text-orange-400" /> Clima
                             </td>
                             {result.forecast.map((f: any, i: number) => (
-                              <td key={i} className="px-2 py-1.5 text-center">
+                              <td key={i} className={`px-2 py-1.5 text-center ${isNewDay(result.forecast, i) ? 'border-l-2 border-dashed border-slate-700/50' : ''}`}>
                                 <div className="text-slate-300 font-medium">{f.temperature}°C</div>
                                 <div className="text-[9px] text-slate-500 mt-0.5 uppercase tracking-tighter">{f.weatherDesc}</div>
                               </td>
@@ -742,6 +767,15 @@ export default function App() {
                     </div>
                   </div>
                 )}
+
+                {/* Disclaimer */}
+                <div className="mb-6 p-3 bg-slate-800/30 border border-slate-700/50 rounded-lg flex items-start gap-2 text-xs text-slate-400">
+                  <AlertCircle size={14} className="text-yellow-500/70 shrink-0 mt-0.5" />
+                  <p>
+                    <strong className="text-slate-300">Aviso:</strong> Las condiciones meteorológicas son dinámicas y pueden variar. 
+                    Te sugerimos volver a consultar a Albatros unas horas antes de tu sesión para obtener el pronóstico más actualizado.
+                  </p>
+                </div>
 
                 {/* Share Buttons (Between Dashboard and Report) */}
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-8">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
-import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud } from 'lucide-react';
+import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud, CloudRain, Droplet, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -22,13 +22,12 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const MOCK_RESULT = {
   greeting: "¡Aloha, rider! Te compartimos un análisis de demostración (la API está saturada) para tu sesión.",
-  weather: {
-    temperature: 22,
-    waterTemperature: 18,
-    cloudCover: "Parcialmente nublado",
-    precipitation: "0%",
-    windDirection: "SE"
-  },
+  forecast: [
+    { time: "Hoy 09:00", windSpeed: 8, windDirection: "NW", waveHeight: 1.2, wavePeriod: 11, temperature: 18, weatherDesc: "Soleado" },
+    { time: "Hoy 12:00", windSpeed: 12, windDirection: "WNW", waveHeight: 1.3, wavePeriod: 11, temperature: 22, weatherDesc: "Mayormente soleado" },
+    { time: "Hoy 15:00", windSpeed: 16, windDirection: "S", waveHeight: 1.5, wavePeriod: 10, temperature: 24, weatherDesc: "Parcialmente nublado" },
+    { time: "Mañ 09:00", windSpeed: 14, windDirection: "SSE", waveHeight: 1.4, wavePeriod: 10, temperature: 20, weatherDesc: "Nublado" }
+  ],
   bestSpots: [
     {
       timeWindow: "Hoy (14:00 a 18:00)",
@@ -38,20 +37,15 @@ const MOCK_RESULT = {
       ]
     }
   ],
-  radarAnalysis: "### Análisis de Demostración\n\nDebido a la alta demanda actual en los servidores de inteligencia artificial, te estamos mostrando un reporte simulado para que veas cómo funciona Albatros.\n\n- **Viento:** Offshore a 10 nudos, rotando al sur hacia la tarde.\n- **Swell:** Sudoeste, 1.5 metros con período de 11 segundos.\n- **Marea:** Subiendo hasta las 16:00 hs, lo que va a empujar buenas series.",
-  verdict: "Veredicto Albatros: Mandate a Playa Grande a media tarde. ¡Las condiciones están épicas para meterse al agua!",
-  chartData: [
-    { time: "12:00", windSpeed: 12, waveHeight: 1.2, windDirection: "SE" },
-    { time: "14:00", windSpeed: 10, waveHeight: 1.5, windDirection: "SSE" },
-    { time: "16:00", windSpeed: 8, waveHeight: 1.6, windDirection: "S" },
-    { time: "18:00", windSpeed: 15, waveHeight: 1.4, windDirection: "SSW" }
-  ]
+  verdict: "Veredicto Albatros: Mandate a Playa Grande a media tarde. ¡Las condiciones están épicas para meterse al agua!"
 };
 
 const SYSTEM_INSTRUCTION = `Rol: Sos Albatros, un asesor experto en deportes acuáticos (Bodyboard, Surf, Windsurf, SUP, Kitesurf, Náutica, Wave runner, Jet ski, Esquí acuático y Wakeboard). Tu rango de acción abarca CUALQUIER superficie con agua de la República Argentina (costa atlántica, ríos, lagos y lagunas). Considerá que muchas de estas superficies (especialmente en el sur) se congelan o tienen temperaturas extremas en invierno.
 
 Reglas de Análisis (El Protocolo Albatros):
-- Meteorología Completa: Debes estimar y proporcionar datos meteorológicos del lugar: temperatura ambiente, nubosidad, probabilidad de precipitaciones, y MUY IMPORTANTE: estimar la temperatura del agua basándote en la época del año y las corrientes marinas de la zona.
+- Brevedad (CRÍTICO): Para reducir el tiempo de respuesta, mantén las descripciones muy breves (máximo 15 palabras por spot). No generes texto de relleno.
+- Coordenadas Exactas (CRÍTICO): ¡NO uses coordenadas de ciudades! Busca la latitud y longitud EXACTA del SPOT DE SURF/KITE específico. Los pines deben caer EXACTAMENTE en el agua o en la arena. Si el spot es en la costa atlántica (ej: Miramar, Mar del Plata), el mar está al ESTE o SURESTE del centro. Ajusta la longitud sumando ~0.02 a la longitud del centro para asegurar que caiga en el agua.
+- Tabla de Pronóstico: Genera un pronóstico detallado por franjas horarias. El campo "time" DEBE incluir el día y la hora (ej: "Hoy 15:00", "Mié 09:00").
 - Morfología del Spot (Prioridad 1): Antes de recomendar, analizá la forma de la costa, río o lago. Evitá bahías cerradas si el swell es pequeño. Buscá escolleras para rebote (Bodyboard) o playas abiertas para fuerza (Surf).
 - Cruce Swell/Viento-Dirección: Verificá si la dirección del Swell o Viento entra limpia en la orientación de la playa/costa.
 - La Regla del Período (T): T < 7s: Mar movido, "fofo", rinde más para Windsurf si hay viento. T > 9s: Olas con fuerza y rampa. Ideal para Bodyboard.
@@ -62,13 +56,11 @@ Reglas de Análisis (El Protocolo Albatros):
 
 El output para el usuario debe ser un objeto JSON que contenga:
 1. "greeting": Un saludo inicial. DEBE empezar con "¡Aloha, [apodo del deporte]!" (ej: rider, surfer, kiter, remero) seguido de "Te compartimos el análisis para tu sesión de [Deporte] en [Ubicación]."
-2. "weather": Un objeto con "temperature", "waterTemperature", "cloudCover", "precipitation" y "windDirection".
+2. "forecast": Un array de objetos con el pronóstico por horas (máximo 4 franjas horarias). Cada objeto debe tener "time" (ej: "Hoy 09:00" o "Mié 15:00"), "windSpeed" (nudos), "windDirection" (ej: "NW"), "waveHeight" (metros, 0 si no aplica), "wavePeriod" (segundos, 0 si no aplica), "temperature" (°C) y "weatherDesc" (ej: "Soleado").
 3. "bestSpots": Un array de objetos agrupados por momento del día. Cada objeto tiene:
    - "timeWindow": Ej: "Sábado (13:30 a 16:30)"
-   - "spots": Array de spots recomendados para ese momento, ordenados por calidad. Cada spot tiene "name", "description" (explicación corta del porqué), "lat" y "lng".
-4. "radarAnalysis": Un string con el análisis detallado bajo el título "El Radar de Albatros (Análisis de Condiciones)". Utilizá formato Markdown para estructurar la respuesta.
-4. "verdict": Un string con el "Veredicto Albatros". Esta es la recomendación final y definitiva, destacando la mejor opción absoluta.
-5. "chartData": Un array de datos simulados o reales de las condiciones para graficar. Cada objeto debe tener "time" (ej: "08:00"), "windSpeed" (nudos), "waveHeight" (metros, si aplica, sino 0).`;
+   - "spots": Array de spots recomendados para ese momento, ordenados por calidad (máximo 3 spots). Cada spot tiene "name", "description" (explicación MUY corta), "lat" y "lng".
+4. "verdict": Un string con el "Veredicto Albatros". Esta es la recomendación final y definitiva, destacando la mejor opción absoluta en máximo 2 oraciones.`;
 
 const AdSlot = ({ className = '' }: { className?: string }) => (
   <div className={`bg-slate-900/50 border border-slate-800 border-dashed flex flex-col items-center justify-center text-slate-500 text-sm p-4 rounded-xl ${className}`}>
@@ -118,6 +110,28 @@ const RadarLoader = () => (
     </div>
   </div>
 );
+
+const getWindColor = (speed: number) => {
+  if (speed < 8) return 'bg-blue-500/20 text-blue-300';
+  if (speed < 15) return 'bg-emerald-500/30 text-emerald-300';
+  if (speed < 20) return 'bg-yellow-500/30 text-yellow-300';
+  return 'bg-red-500/30 text-red-300';
+};
+
+const getWaveColor = (height: number) => {
+  if (height < 0.5) return 'bg-slate-700/50 text-slate-300';
+  if (height < 1.0) return 'bg-cyan-900/50 text-cyan-300';
+  if (height < 1.5) return 'bg-cyan-700/50 text-cyan-200';
+  if (height < 2.0) return 'bg-blue-600/50 text-blue-200';
+  return 'bg-indigo-600/50 text-indigo-200';
+};
+
+const getPeriodColor = (period: number) => {
+  if (period < 7) return 'bg-slate-700/50 text-slate-300';
+  if (period < 10) return 'bg-blue-900/50 text-blue-300';
+  if (period < 13) return 'bg-indigo-900/50 text-indigo-300';
+  return 'bg-purple-900/50 text-purple-300';
+};
 
 export default function App() {
   const getTomorrowDate = () => {
@@ -256,17 +270,22 @@ export default function App() {
             type: Type.OBJECT,
             properties: {
               greeting: { type: Type.STRING, description: "El saludo inicial." },
-              weather: {
-                type: Type.OBJECT,
-                description: "Datos meteorológicos estimados del lugar.",
-                properties: {
-                  temperature: { type: Type.NUMBER, description: "Temperatura ambiente en grados Celsius." },
-                  waterTemperature: { type: Type.NUMBER, description: "Temperatura estimada del agua en grados Celsius según corrientes." },
-                  cloudCover: { type: Type.STRING, description: "Estado del cielo (ej: Despejado, Parcialmente nublado)." },
-                  precipitation: { type: Type.STRING, description: "Probabilidad o estado de precipitaciones (ej: 0%, Lluvia débil)." },
-                  windDirection: { type: Type.STRING, description: "Dirección predominante del viento (ej: NNE, Sur)." }
-                },
-                required: ["temperature", "waterTemperature", "cloudCover", "precipitation", "windDirection"]
+              forecast: {
+                type: Type.ARRAY,
+                description: "Pronóstico detallado por horas para armar la tabla estilo Windguru.",
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    time: { type: Type.STRING, description: "Día y Hora (ej: 'Hoy 09:00' o 'Mié 15:00')" },
+                    windSpeed: { type: Type.NUMBER, description: "Velocidad del viento en nudos" },
+                    windDirection: { type: Type.STRING, description: "Dirección del viento (ej: NW, S, SE)" },
+                    waveHeight: { type: Type.NUMBER, description: "Altura de la ola en metros" },
+                    wavePeriod: { type: Type.NUMBER, description: "Período de la ola en segundos" },
+                    temperature: { type: Type.NUMBER, description: "Temperatura ambiente en °C" },
+                    weatherDesc: { type: Type.STRING, description: "Descripción corta del clima (ej: Soleado, Nublado, Lluvia)" }
+                  },
+                  required: ["time", "windSpeed", "windDirection", "waveHeight", "wavePeriod", "temperature", "weatherDesc"]
+                }
               },
               bestSpots: {
                 type: Type.ARRAY,
@@ -282,7 +301,7 @@ export default function App() {
                         type: Type.OBJECT,
                         properties: {
                           name: { type: Type.STRING },
-                          description: { type: Type.STRING },
+                          description: { type: Type.STRING, description: "Máximo 15 palabras." },
                           lat: { type: Type.NUMBER },
                           lng: { type: Type.NUMBER },
                         },
@@ -293,24 +312,9 @@ export default function App() {
                   required: ["timeWindow", "spots"]
                 }
               },
-              radarAnalysis: { type: Type.STRING, description: "Análisis detallado en Markdown." },
-              verdict: { type: Type.STRING, description: "El Veredicto Albatros: La recomendación final y definitiva." },
-              chartData: {
-                type: Type.ARRAY,
-                description: "Datos para los gráficos de viento y olas.",
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    time: { type: Type.STRING },
-                    windSpeed: { type: Type.NUMBER },
-                    waveHeight: { type: Type.NUMBER },
-                    windDirection: { type: Type.STRING, description: "Dirección del viento en ese horario" }
-                  },
-                  required: ["time", "windSpeed", "waveHeight", "windDirection"]
-                }
-              }
+              verdict: { type: Type.STRING, description: "El Veredicto Albatros: La recomendación final y definitiva (máximo 2 oraciones)." }
             },
-            required: ["greeting", "weather", "bestSpots", "radarAnalysis", "verdict", "chartData"],
+            required: ["greeting", "forecast", "bestSpots", "verdict"],
           },
         },
       });
@@ -629,148 +633,120 @@ export default function App() {
                 {/* Ad Slot Top */}
                 <AdSlot className="h-24 w-full mb-6" />
 
-                <div className="mb-8">
-                  <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight w-full mb-6 text-center md:text-left">
+                <div className="mb-6">
+                  <h2 className="text-xl md:text-2xl font-medium text-slate-100 leading-tight w-full text-center md:text-left">
                     {result.greeting}
                   </h2>
-                  
-                  {/* Share Buttons (Top) */}
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-                    <button
-                      onClick={handleShare}
-                      className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-medium transition-colors text-sm border border-slate-700"
-                    >
-                      {copied ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} className="text-cyan-400" />}
-                      {copied ? '¡Copiado!' : 'Copiar Link'}
-                    </button>
-                    <a
-                      href={`https://api.whatsapp.com/send?text=${encodeURIComponent('¡Mirá el reporte de Albatros para mi próxima sesión! 🌊🏄‍♂️\n\n' + window.location.href)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] rounded-lg font-medium transition-colors text-sm border border-[#25D366]/20"
-                    >
-                      <Share2 size={16} />
-                      WhatsApp
-                    </a>
-                  </div>
                 </div>
 
-                {/* Weather Data */}
-                {result.weather && (
-                  <div className="mb-8">
-                    {/* Row 1: Temperatures */}
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center text-center">
-                        <Thermometer size={24} className="text-orange-400 mb-2" />
-                        <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Temp. Aire</span>
-                        <span className="text-2xl font-bold text-slate-200">{result.weather.temperature}°C</span>
-                      </div>
-                      <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center text-center">
-                        <Droplets size={24} className="text-cyan-400 mb-2" />
-                        <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Temp. Agua</span>
-                        <span className="text-2xl font-bold text-slate-200">{result.weather.waterTemperature}°C</span>
-                      </div>
+                {/* Integrated Dashboard (Windguru Style Table) */}
+                {result.forecast && result.forecast.length > 0 && (
+                  <div className="bg-slate-950/40 border border-slate-800 rounded-xl overflow-hidden mb-6 shadow-lg">
+                    <div className="p-2.5 border-b border-slate-800/50 bg-slate-900/50">
+                      <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <Activity size={14} className="text-cyan-500" />
+                        Pronóstico Detallado
+                      </h3>
                     </div>
-                    {/* Row 2: Wind, Clouds, Rain */}
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-3 flex flex-col items-center justify-center text-center">
-                        <Wind size={20} className="text-teal-400 mb-1" />
-                        <span className="text-[10px] md:text-xs text-slate-400 font-medium uppercase tracking-wider">Viento</span>
-                        <span className="text-base font-bold text-slate-200">{result.weather.windDirection}</span>
-                      </div>
-                      <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-3 flex flex-col items-center justify-center text-center">
-                        <Cloud size={20} className="text-slate-300 mb-1" />
-                        <span className="text-[10px] md:text-xs text-slate-400 font-medium uppercase tracking-wider">Cielo</span>
-                        <span className="text-sm font-bold text-slate-200 leading-tight mt-1">{result.weather.cloudCover}</span>
-                      </div>
-                      <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-3 flex flex-col items-center justify-center text-center">
-                        <Waves size={20} className="text-blue-400 mb-1" />
-                        <span className="text-[10px] md:text-xs text-slate-400 font-medium uppercase tracking-wider">Lluvia</span>
-                        <span className="text-sm font-bold text-slate-200 leading-tight mt-1">{result.weather.precipitation}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Charts Toggle */}
-                {result.chartData && result.chartData.length > 0 && (
-                  <div className="border border-slate-800 rounded-xl overflow-hidden mb-8 bg-slate-950/50">
-                    <button 
-                      onClick={() => setShowCharts(!showCharts)}
-                      className="w-full hover:bg-slate-800/50 p-4 flex items-center justify-between transition-colors font-medium text-slate-300"
-                    >
-                      <div className="flex items-center gap-2">
-                        <BarChart2 size={18} className="text-cyan-500" />
-                        Gráficos de Viento y Olas
-                      </div>
-                      {showCharts ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </button>
                     
-                    <AnimatePresence>
-                      {showCharts && (
-                        <motion.div 
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="p-6 space-y-8 border-t border-slate-800">
-                            {/* Wind Chart */}
-                            <div>
-                              <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Velocidad del Viento (nudos)</h4>
-                              <div className="h-48 w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                  <AreaChart data={result.chartData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                                    <defs>
-                                      <linearGradient id="colorWind" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
-                                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
-                                      </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
-                                    <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                                    <Tooltip 
-                                      contentStyle={{ borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f1f5f9', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.5)' }}
-                                      labelFormatter={(label) => `Hora: ${label}`}
-                                      formatter={(value, name, props) => {
-                                        if (name === 'windSpeed') return [`${value} nudos (${props.payload.windDirection})`, 'Viento'];
-                                        return [value, name];
-                                      }}
-                                    />
-                                    <Area type="monotone" dataKey="windSpeed" stroke="#06b6d4" strokeWidth={2} fillOpacity={1} fill="url(#colorWind)" />
-                                  </AreaChart>
-                                </ResponsiveContainer>
-                              </div>
-                            </div>
-
-                            {/* Wave Chart */}
-                            <div>
-                              <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Altura de Olas (metros)</h4>
-                              <div className="h-48 w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                  <AreaChart data={result.chartData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                                    <defs>
-                                      <linearGradient id="colorWave" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                                      </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
-                                    <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                                    <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f1f5f9', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.5)' }} />
-                                    <Area type="monotone" dataKey="waveHeight" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorWave)" />
-                                  </AreaChart>
-                                </ResponsiveContainer>
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[11px] md:text-xs text-left whitespace-nowrap font-sans tracking-tight">
+                        <thead>
+                          <tr className="bg-slate-900/30 border-b border-slate-800/50">
+                            <th className="px-3 py-2 font-medium text-slate-400 sticky left-0 bg-slate-900/90 z-10 border-r border-slate-800/50">Día/Hora</th>
+                            {result.forecast.map((f: any, i: number) => (
+                              <th key={i} className="px-2 py-2 font-medium text-slate-200 text-center">{f.time}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/50">
+                          {/* Viento */}
+                          <tr className="hover:bg-slate-900/20">
+                            <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
+                              <Wind size={12} className="text-teal-400" /> Viento (kts)
+                            </td>
+                            {result.forecast.map((f: any, i: number) => (
+                              <td key={i} className="px-1 py-1.5 text-center">
+                                <div className={`inline-block px-1.5 py-0.5 rounded font-medium ${getWindColor(f.windSpeed)}`}>
+                                  {f.windSpeed}
+                                </div>
+                              </td>
+                            ))}
+                          </tr>
+                          {/* Dirección */}
+                          <tr className="hover:bg-slate-900/20">
+                            <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
+                              <Navigation size={12} className="text-slate-500" /> Dirección
+                            </td>
+                            {result.forecast.map((f: any, i: number) => (
+                              <td key={i} className="px-2 py-1.5 text-center font-normal text-slate-300">
+                                {f.windDirection}
+                              </td>
+                            ))}
+                          </tr>
+                          {/* Olas */}
+                          <tr className="hover:bg-slate-900/20">
+                            <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
+                              <Waves size={12} className="text-blue-400" /> Olas (m)
+                            </td>
+                            {result.forecast.map((f: any, i: number) => (
+                              <td key={i} className="px-1 py-1.5 text-center">
+                                <div className={`inline-block px-1.5 py-0.5 rounded font-medium ${getWaveColor(f.waveHeight)}`}>
+                                  {f.waveHeight}
+                                </div>
+                              </td>
+                            ))}
+                          </tr>
+                          {/* Período */}
+                          <tr className="hover:bg-slate-900/20">
+                            <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
+                              <Activity size={12} className="text-indigo-400" /> Período (s)
+                            </td>
+                            {result.forecast.map((f: any, i: number) => (
+                              <td key={i} className="px-1 py-1.5 text-center">
+                                <div className={`inline-block px-1.5 py-0.5 rounded font-medium ${getPeriodColor(f.wavePeriod)}`}>
+                                  {f.wavePeriod}
+                                </div>
+                              </td>
+                            ))}
+                          </tr>
+                          {/* Clima */}
+                          <tr className="hover:bg-slate-900/20">
+                            <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
+                              <Thermometer size={12} className="text-orange-400" /> Clima
+                            </td>
+                            {result.forecast.map((f: any, i: number) => (
+                              <td key={i} className="px-2 py-1.5 text-center">
+                                <div className="text-slate-300 font-medium">{f.temperature}°C</div>
+                                <div className="text-[9px] text-slate-500 mt-0.5 uppercase tracking-tighter">{f.weatherDesc}</div>
+                              </td>
+                            ))}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
+
+                {/* Share Buttons (Between Dashboard and Report) */}
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-8">
+                  <button
+                    onClick={handleShare}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-medium transition-colors text-sm border border-slate-700"
+                  >
+                    {copied ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} className="text-cyan-400" />}
+                    {copied ? '¡Copiado!' : 'Copiar Link'}
+                  </button>
+                  <a
+                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent('¡Mirá el reporte de Albatros para mi próxima sesión! 🌊🏄‍♂️\n\n' + window.location.href)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] rounded-lg font-medium transition-colors text-sm border border-[#25D366]/20"
+                  >
+                    <Share2 size={16} />
+                    WhatsApp
+                  </a>
+                </div>
                 
                 {/* Spots List */}
                 <div className="space-y-6 mb-8">
@@ -859,20 +835,6 @@ export default function App() {
                     WhatsApp
                   </a>
                 </div>
-
-                {/* Radar Analysis */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-semibold flex items-center gap-2 text-white border-b border-slate-800 pb-4 mb-4">
-                    <Waves className="text-cyan-500" size={24} />
-                    El Radar de Albatros (Análisis de Condiciones)
-                  </h3>
-                  <div className="prose prose-invert prose-cyan max-w-none prose-headings:font-medium prose-h3:text-base prose-p:leading-relaxed prose-p:font-normal prose-p:text-sm md:prose-p:text-base prose-strong:font-medium prose-strong:text-slate-200 prose-a:text-cyan-400 hover:prose-a:text-cyan-300 text-slate-300 font-normal">
-                    <ReactMarkdown>{result.radarAnalysis}</ReactMarkdown>
-                  </div>
-                </div>
-
-                {/* Ad Slot Middle 2 */}
-                <AdSlot className="h-24 w-full mb-8" />
 
                 {/* Ad Slot Bottom */}
                 <AdSlot className="h-24 w-full mt-auto" />

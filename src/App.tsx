@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
-import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud, CloudRain, Droplet, ArrowRight, Sun, Moon, AlertCircle } from 'lucide-react';
+import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud, CloudRain, Droplet, ArrowRight, Sun, Moon, AlertCircle, ArrowDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -28,8 +28,8 @@ const MOCK_RESULT = {
       date: "2026-03-03",
       dayName: "Martes 3",
       forecast: [
-        { time: "09:00", windSpeed: 8, windDirection: "NW", waveHeight: 1.2, wavePeriod: 11, temperature: 18, weatherDesc: "Soleado" },
-        { time: "15:00", windSpeed: 12, windDirection: "WNW", waveHeight: 1.3, wavePeriod: 11, temperature: 22, weatherDesc: "Mayormente soleado" }
+        { time: "09:00", windSpeed: 8, windDirection: "NW", waveHeight: 1.2, waveDirection: "SE", wavePeriod: 11, temperature: 18, cloudCover: 5 },
+        { time: "15:00", windSpeed: 12, windDirection: "WNW", waveHeight: 1.3, waveDirection: "SE", wavePeriod: 11, temperature: 22, cloudCover: 25 }
       ],
       bestSpots: [
         {
@@ -45,8 +45,8 @@ const MOCK_RESULT = {
       date: "2026-03-04",
       dayName: "Miércoles 4",
       forecast: [
-        { time: "09:00", windSpeed: 15, windDirection: "S", waveHeight: 1.5, wavePeriod: 10, temperature: 17, weatherDesc: "Nublado" },
-        { time: "15:00", windSpeed: 18, windDirection: "S", waveHeight: 1.8, wavePeriod: 9, temperature: 19, weatherDesc: "Lluvia débil" }
+        { time: "09:00", windSpeed: 15, windDirection: "S", waveHeight: 1.5, waveDirection: "E", wavePeriod: 10, temperature: 17, cloudCover: 90 },
+        { time: "15:00", windSpeed: 18, windDirection: "S", waveHeight: 1.8, waveDirection: "E", wavePeriod: 9, temperature: 19, cloudCover: 100 }
       ],
       bestSpots: [
         {
@@ -65,14 +65,29 @@ const SYSTEM_INSTRUCTION = `Rol: Sos Albatros, un asesor experto en deportes acu
 
 Reglas de Análisis (El Protocolo Albatros):
 - Brevedad (CRÍTICO): Para reducir el tiempo de respuesta, mantén las descripciones muy breves (máximo 15 palabras por spot). No generes texto de relleno.
-- Coordenadas Exactas (CRÍTICO): ¡NO uses coordenadas del centro de las ciudades! Los pines deben caer EXACTAMENTE en la línea de costa (donde rompen las olas), NO mar adentro ni en el medio de la ciudad.
-  Ejemplos de corrección obligatoria:
-  - Miramar centro es -38.268, -57.836 -> El spot "Punta Hermengo" DEBE estar en la costa en -38.285, -57.828.
-  - Mar del Plata centro es -38.000, -57.550 -> "Playa Grande" DEBE estar en la costa en -38.026, -57.531.
-  Usa las coordenadas REALES de la playa. Si no las sabes exactamente, usa las de la ciudad pero NO inventes desplazamientos exagerados mar adentro. El pin debe estar justo en la intersección entre la tierra y el agua.
+- Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE EN LA LÍNEA DE COSTA (la frontera entre la tierra y el agua). NUNCA en medio del mar abierto ni en medio de la ciudad/continente. Los usuarios se quejan de que los pines caen mal. Si recomiendas un spot, busca la latitud y longitud EXACTA de la playa o bajada náutica.
+  BASE DE DATOS DE COORDENADAS EXACTAS (ÚSALAS SI RECOMIENDAS ESTOS SPOTS):
+  - Mar del Plata (Playa Grande): -38.026, -57.531
+  - Mar del Plata (Waikiki/Punta Mogotes): -38.077, -57.543
+  - Chapadmalal (Cruz del Sur): -38.180, -57.640
+  - Miramar (Punta Hermengo): -38.282, -57.832
+  - Necochea (Escollera Sur): -38.580, -58.705
+  - Pinamar (Playa Centro): -37.115, -56.855
+  - Villa Gesell (Playa Centro): -37.255, -56.965
+  - Punta Rasa (San Clemente): -36.290, -56.775
+  - San Isidro (Perú Beach / Río de la Plata): -34.475, -58.495
+  - Rosario (La Florida / Río Paraná): -32.890, -60.685
+  - San Juan (Cuesta del Viento): -30.270, -69.115
+  - Mendoza (Potrerillos): -32.950, -69.190
+  - Bariloche (Playa Bonita / Nahuel Huapi): -41.115, -71.385
+  - Puerto Madryn (Playa Centro): -42.765, -65.030
+  - Rada Tilly (Chubut): -45.925, -67.550
+  Si el spot no está en esta lista, ASEGÚRATE de que las coordenadas caigan exactamente en la costa, no adentro del agua ni en la ciudad.
 - Resultados por Día: DEBES generar un análisis completo (pronóstico, spots y veredicto) para CADA UNO de los días dentro del rango de fechas solicitado.
-- Tabla de Pronóstico: Genera un pronóstico detallado por franjas horarias para cada día (máximo 4 franjas por día). El campo "time" solo necesita la hora (ej: "09:00", "15:00").
-- Astronomía: Incluye la hora estimada de amanecer y atardecer para la ubicación y época del año.
+- Tabla de Pronóstico: Genera un pronóstico detallado por franjas horarias para cada día. OBLIGATORIO: Solo debes generar EXACTAMENTE 2 franjas horarias por día:
+  1. Mañana: Desde la hora de amanecer (sunrise) hasta las 13:00. (ej: "Mañana (06:35 - 13:00)")
+  2. Tarde: Desde las 13:00 hasta la hora de atardecer (sunset). (ej: "Tarde (13:00 - 19:30)")
+- Astronomía: Calcula e incluye la hora estimada de amanecer y atardecer para la ubicación y época del año. Usa estas horas para definir el inicio de la Mañana y el fin de la Tarde.
 - Morfología del Spot (Prioridad 1): Antes de recomendar, analizá la forma de la costa, río o lago. Evitá bahías cerradas si el swell es pequeño. Buscá escolleras para rebote (Bodyboard) o playas abiertas para fuerza (Surf).
 - Cruce Swell/Viento-Dirección: Verificá si la dirección del Swell o Viento entra limpia en la orientación de la playa/costa.
 - La Regla del Período (T): T < 7s: Mar movido, "fofo", rinde más para Windsurf si hay viento. T > 9s: Olas con fuerza y rampa. Ideal para Bodyboard.
@@ -87,7 +102,7 @@ El output para el usuario debe ser un objeto JSON que contenga:
 3. "dailyResults": Un array de objetos, UNO POR CADA DÍA del rango solicitado. Cada objeto tiene:
    - "date": Fecha (ej: "2026-03-03")
    - "dayName": Nombre del día (ej: "Martes 3")
-   - "forecast": Array con el pronóstico por horas de ESE día. Cada objeto debe tener "time" (ej: "09:00"), "windSpeed" (nudos), "windDirection" (ej: "NW"), "waveHeight" (metros, 0 si no aplica), "wavePeriod" (segundos, 0 si no aplica), "temperature" (°C) y "weatherDesc" (ej: "Soleado").
+   - "forecast": Array con el pronóstico por horas de ESE día. Cada objeto debe tener "time" (ej: "Mañana (06:35 - 13:00)"), "windSpeed" (nudos), "windDirection" (ej: "NW"), "waveHeight" (metros, 0 si no aplica), "waveDirection" (ej: "SE"), "wavePeriod" (segundos, 0 si no aplica), "temperature" (°C) y "cloudCover" (porcentaje de nubosidad, de 0 a 100).
    - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. Cada objeto tiene "timeWindow" y "spots" (máximo 3 spots). Cada spot tiene "name", "description" (explicación MUY corta), "lat" y "lng".
    - "verdict": Veredicto corto para ESE día (máximo 2 oraciones).`;
 
@@ -162,6 +177,59 @@ const getPeriodColor = (period: number) => {
   return 'bg-purple-900/50 text-purple-300';
 };
 
+const getCloudCoverColor = (cover: number) => {
+  if (cover < 20) return 'bg-slate-100 text-slate-800'; // Despejado
+  if (cover < 50) return 'bg-slate-300 text-slate-800'; // Algo nublado
+  if (cover < 80) return 'bg-slate-500 text-slate-100'; // Mayormente nublado
+  return 'bg-slate-700 text-slate-100'; // Nublado
+};
+
+const getDirectionRotation = (dir: string) => {
+  if (!dir) return 0;
+  const map: Record<string, number> = {
+    'N': 0, 'NNE': 22.5, 'NE': 45, 'ENE': 67.5,
+    'E': 90, 'ESE': 112.5, 'SE': 135, 'SSE': 157.5,
+    'S': 180, 'SSW': 202.5, 'SW': 225, 'WSW': 247.5,
+    'W': 270, 'WNW': 292.5, 'NW': 315, 'NNW': 337.5
+  };
+  return map[dir.toUpperCase()] ?? 0;
+};
+
+const HERO_IMAGES = [
+  "https://images.unsplash.com/photo-1502680390469-be75c86b636f?q=80&w=2070&auto=format&fit=crop", // Surf action
+  "https://images.unsplash.com/photo-1537154835319-14f38d108bba?q=80&w=2070&auto=format&fit=crop", // Kitesurf jump
+  "https://images.unsplash.com/photo-1530866495561-507c9faab2ed?q=80&w=2000&auto=format&fit=crop", // Windsurf
+  "https://images.unsplash.com/photo-1515405295579-ba7b45403062?q=80&w=2000&auto=format&fit=crop", // Surf barrel
+  "https://images.unsplash.com/photo-1520208422220-d12a3c588e6c?q=80&w=2000&auto=format&fit=crop"  // Wakeboard
+];
+
+const KNOWN_SPOTS: Record<string, {lat: number, lng: number}> = {
+  "playa grande": { lat: -38.026, lng: -57.531 },
+  "waikiki": { lat: -38.077, lng: -57.543 },
+  "punta mogotes": { lat: -38.065, lng: -57.545 },
+  "chapadmalal": { lat: -38.180, lng: -57.640 },
+  "cruz del sur": { lat: -38.180, lng: -57.640 },
+  "miramar": { lat: -38.282, lng: -57.832 },
+  "punta hermengo": { lat: -38.282, lng: -57.832 },
+  "necochea": { lat: -38.580, lng: -58.705 },
+  "escollera sur": { lat: -38.580, lng: -58.705 },
+  "pinamar": { lat: -37.115, lng: -56.855 },
+  "villa gesell": { lat: -37.255, lng: -56.965 },
+  "punta rasa": { lat: -36.290, lng: -56.775 },
+  "san clemente": { lat: -36.290, lng: -56.775 },
+  "perú beach": { lat: -34.475, lng: -58.495 },
+  "peru beach": { lat: -34.475, lng: -58.495 },
+  "san isidro": { lat: -34.475, lng: -58.495 },
+  "la florida": { lat: -32.890, lng: -60.685 },
+  "rosario": { lat: -32.890, lng: -60.685 },
+  "cuesta del viento": { lat: -30.270, lng: -69.115 },
+  "potrerillos": { lat: -32.950, lng: -69.190 },
+  "playa bonita": { lat: -41.115, lng: -71.385 },
+  "nahuel huapi": { lat: -41.115, lng: -71.385 },
+  "puerto madryn": { lat: -42.765, lng: -65.030 },
+  "rada tilly": { lat: -45.925, lng: -67.550 },
+};
+
 export default function App() {
   const getTomorrowDate = () => {
     const d = new Date();
@@ -188,6 +256,11 @@ export default function App() {
   const [progress, setProgress] = useState(0);
   const [hasAutoSubmitted, setHasAutoSubmitted] = useState(false);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const [heroImage, setHeroImage] = useState(HERO_IMAGES[0]);
+
+  useEffect(() => {
+    setHeroImage(HERO_IMAGES[Math.floor(Math.random() * HERO_IMAGES.length)]);
+  }, []);
 
   useEffect(() => {
     if (result) {
@@ -327,19 +400,20 @@ export default function App() {
                     dayName: { type: Type.STRING, description: "Nombre del día (ej: Martes 3)" },
                     forecast: {
                       type: Type.ARRAY,
-                      description: "Pronóstico detallado por horas para este día (máximo 4 franjas).",
+                      description: "Pronóstico detallado por horas para este día. OBLIGATORIO: EXACTAMENTE 2 franjas horarias (Mañana y Tarde).",
                       items: {
                         type: Type.OBJECT,
                         properties: {
-                          time: { type: Type.STRING, description: "Hora (ej: '09:00')" },
+                          time: { type: Type.STRING, description: "Período y Hora (ej: 'Mañana (08:00 - 12:00)')" },
                           windSpeed: { type: Type.NUMBER, description: "Velocidad del viento en nudos" },
                           windDirection: { type: Type.STRING, description: "Dirección del viento (ej: NW, S, SE)" },
                           waveHeight: { type: Type.NUMBER, description: "Altura de la ola en metros" },
+                          waveDirection: { type: Type.STRING, description: "Dirección de la ola (ej: S, SE, E)" },
                           wavePeriod: { type: Type.NUMBER, description: "Período de la ola en segundos" },
                           temperature: { type: Type.NUMBER, description: "Temperatura ambiente en °C" },
-                          weatherDesc: { type: Type.STRING, description: "Descripción corta del clima (ej: Soleado, Nublado, Lluvia)" }
+                          cloudCover: { type: Type.NUMBER, description: "Porcentaje de nubosidad (0 a 100)" }
                         },
-                        required: ["time", "windSpeed", "windDirection", "waveHeight", "wavePeriod", "temperature", "weatherDesc"]
+                        required: ["time", "windSpeed", "windDirection", "waveHeight", "waveDirection", "wavePeriod", "temperature", "cloudCover"]
                       }
                     },
                     bestSpots: {
@@ -380,6 +454,29 @@ export default function App() {
 
       const jsonStr = response.text || '{}';
       const parsed = JSON.parse(jsonStr);
+      
+      // Post-process to snap coordinates to known spots
+      if (parsed.dailyResults) {
+        parsed.dailyResults.forEach((day: any) => {
+          if (day.bestSpots) {
+            day.bestSpots.forEach((window: any) => {
+              if (window.spots) {
+                window.spots.forEach((spot: any) => {
+                  const spotNameLower = spot.name.toLowerCase();
+                  for (const [knownName, coords] of Object.entries(KNOWN_SPOTS)) {
+                    if (spotNameLower.includes(knownName)) {
+                      spot.lat = coords.lat;
+                      spot.lng = coords.lng;
+                      break;
+                    }
+                  }
+                });
+              }
+            });
+          }
+        });
+      }
+
       setResult(parsed);
       
       // Save successful result to cache
@@ -435,33 +532,24 @@ export default function App() {
 
       {/* Intro Text with Video Background */}
       <section className="relative w-full overflow-hidden border-b border-slate-800 h-[500px] flex items-center justify-center">
-        {/* Background Image (100% reliable fallback for video blocks) */}
+        {/* Background Image */}
         <div className="absolute inset-0 w-full h-full z-0 bg-slate-900 overflow-hidden">
           <div 
-            className="absolute inset-0 w-full h-full bg-[url('https://images.unsplash.com/photo-1502680390469-be75c86b636f?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-50 transition-transform duration-[30000ms] ease-out hover:scale-110"
-            style={{ animation: 'kenburns 20s ease-in-out infinite alternate' }}
+            className="absolute inset-0 w-full h-full bg-cover bg-center animate-kenburns will-change-transform"
+            style={{ backgroundImage: `url('${heroImage}')` }}
           />
-          <style>{`
-            @keyframes kenburns {
-              0% { transform: scale(1); }
-              100% { transform: scale(1.1); }
-            }
-          `}</style>
-          {/* Overlays for readability */}
-          <div className="absolute inset-0 bg-slate-950/60"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
+          {/* Overlays for readability (less dark, full color) */}
+          <div className="absolute inset-0 bg-slate-950/40"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
         </div>
         
         {/* Content */}
-        <div className="relative z-10 max-w-5xl mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight drop-shadow-lg">
-            Encontrá tu spot perfecto con Albatros
+        <div className="relative z-10 max-w-5xl mx-auto px-4 text-center mt-10">
+          <h2 className="text-4xl md:text-6xl font-bold text-white mb-6 tracking-tight drop-shadow-lg">
+            Pronóstico Inteligente para <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Deportes Acuáticos</span>
           </h2>
-          <p className="text-cyan-300 font-medium max-w-2xl mx-auto text-lg md:text-xl leading-relaxed mb-4 drop-shadow-md">
-            Ingresá tus parámetros y obtené recomendaciones de precisión quirúrgica para tu próxima sesión en el agua
-          </p>
-          <p className="text-slate-300 max-w-2xl mx-auto text-sm md:text-base leading-relaxed drop-shadow">
-            Albatros cruza datos meteorológicos en tiempo real con la geografía de cada spot en Argentina y te da la mejor recomendación para un gran momento acuático.
+          <p className="text-slate-200 max-w-2xl mx-auto text-lg md:text-xl leading-relaxed drop-shadow-md font-medium">
+            Contanos dónde estás, qué deporte hacés y hasta dónde te podés mover. Nosotros cruzamos los datos y te tiramos la posta del mejor spot.
           </p>
         </div>
       </section>
@@ -768,63 +856,103 @@ export default function App() {
                               <tbody className="divide-y divide-slate-800/50">
                                 {/* Viento */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
-                                    <Wind size={12} className="text-teal-400" /> Viento (kts)
+                                  <td className="px-3 py-2 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle">
+                                    <div className="flex items-center gap-1.5 h-full">
+                                      <Wind size={12} className="text-teal-400" /> Viento (kts)
+                                    </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-1.5 text-center`}>
-                                      <div className={`inline-block px-1.5 py-0.5 rounded font-medium ${getWindColor(f.windSpeed)}`}>
-                                        {f.windSpeed}
+                                    <td key={i} className={`px-1 py-1.5 text-center align-middle`}>
+                                      <div className="flex items-center justify-center gap-2">
+                                        <div className={`inline-flex items-center justify-center w-12 h-6 rounded font-medium ${getWindColor(f.windSpeed)}`}>
+                                          {f.windSpeed}
+                                        </div>
+                                        <div className="flex items-center gap-1 text-slate-300 font-medium w-12 justify-start">
+                                          <ArrowDown size={12} style={{ transform: `rotate(${getDirectionRotation(f.windDirection)}deg)` }} />
+                                          <span>{f.windDirection}</span>
+                                        </div>
                                       </div>
-                                    </td>
-                                  ))}
-                                </tr>
-                                {/* Dirección */}
-                                <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
-                                    <Navigation size={12} className="text-slate-500" /> Dirección
-                                  </td>
-                                  {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-2 py-1.5 text-center font-normal text-slate-300`}>
-                                      {f.windDirection}
                                     </td>
                                   ))}
                                 </tr>
                                 {/* Olas */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
-                                    <Waves size={12} className="text-blue-400" /> Olas (m)
+                                  <td className="px-3 py-2 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle">
+                                    <div className="flex items-center gap-1.5 h-full">
+                                      <Waves size={12} className="text-blue-400" /> Olas (m)
+                                    </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-1.5 text-center`}>
-                                      <div className={`inline-block px-1.5 py-0.5 rounded font-medium ${getWaveColor(f.waveHeight)}`}>
-                                        {f.waveHeight}
+                                    <td key={i} className={`px-1 py-1.5 text-center align-middle`}>
+                                      <div className="flex items-center justify-center gap-2">
+                                        <div className={`inline-flex items-center justify-center w-12 h-6 rounded font-medium ${getWaveColor(f.waveHeight)}`}>
+                                          {f.waveHeight}
+                                        </div>
+                                        <div className="flex items-center gap-1 text-slate-300 font-medium w-12 justify-start">
+                                          {f.waveDirection && f.waveDirection !== '-' ? (
+                                            <>
+                                              <ArrowDown size={12} style={{ transform: `rotate(${getDirectionRotation(f.waveDirection)}deg)` }} />
+                                              <span>{f.waveDirection}</span>
+                                            </>
+                                          ) : (
+                                            <span className="opacity-50">-</span>
+                                          )}
+                                        </div>
                                       </div>
                                     </td>
                                   ))}
                                 </tr>
                                 {/* Período */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
-                                    <Activity size={12} className="text-indigo-400" /> Período (s)
+                                  <td className="px-3 py-2 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle">
+                                    <div className="flex items-center gap-1.5 h-full">
+                                      <Activity size={12} className="text-indigo-400" /> Período (s)
+                                    </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-1.5 text-center`}>
-                                      <div className={`inline-block px-1.5 py-0.5 rounded font-medium ${getPeriodColor(f.wavePeriod)}`}>
-                                        {f.wavePeriod}
+                                    <td key={i} className={`px-1 py-1.5 text-center align-middle`}>
+                                      <div className="flex items-center justify-center gap-2">
+                                        <div className={`inline-flex items-center justify-center w-12 h-6 rounded font-medium ${getPeriodColor(f.wavePeriod)}`}>
+                                          {f.wavePeriod}
+                                        </div>
+                                        <div className="w-12"></div>
+                                      </div>
+                                    </td>
+                                  ))}
+                                </tr>
+                                {/* Nubosidad */}
+                                <tr className="hover:bg-slate-900/20">
+                                  <td className="px-3 py-2 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle">
+                                    <div className="flex items-center gap-1.5 h-full">
+                                      <Cloud size={12} className="text-slate-400" /> Nubosidad (%)
+                                    </div>
+                                  </td>
+                                  {currentDay.forecast.map((f: any, i: number) => (
+                                    <td key={i} className={`px-1 py-1.5 text-center align-middle`}>
+                                      <div className="flex items-center justify-center gap-2">
+                                        <div className={`inline-flex items-center justify-center w-12 h-6 rounded font-medium ${getCloudCoverColor(f.cloudCover)}`}>
+                                          {f.cloudCover}
+                                        </div>
+                                        <div className="w-12"></div>
                                       </div>
                                     </td>
                                   ))}
                                 </tr>
                                 {/* Clima */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-1.5 font-normal text-slate-400 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800/50 flex items-center gap-1.5">
-                                    <Thermometer size={12} className="text-orange-400" /> Clima
+                                  <td className="px-3 py-2 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle">
+                                    <div className="flex items-center gap-1.5 h-full">
+                                      <Thermometer size={12} className="text-orange-400" /> Temp. (°C)
+                                    </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-2 py-1.5 text-center`}>
-                                      <div className="text-slate-300 font-medium">{f.temperature}°C</div>
-                                      <div className="text-[9px] text-slate-500 mt-0.5 uppercase tracking-tighter">{f.weatherDesc}</div>
+                                    <td key={i} className={`px-1 py-1.5 text-center align-middle`}>
+                                      <div className="flex items-center justify-center gap-2">
+                                        <div className="inline-flex items-center justify-center w-12 h-6 rounded font-medium bg-orange-500/20 text-orange-300">
+                                          {f.temperature}°
+                                        </div>
+                                        <div className="w-12"></div>
+                                      </div>
                                     </td>
                                   ))}
                                 </tr>

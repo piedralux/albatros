@@ -61,27 +61,27 @@ const MOCK_RESULT = {
   ]
 };
 
-const SYSTEM_INSTRUCTION = `Rol: Sos Albatros, un asesor experto en deportes acuáticos (Bodyboard, Surf, Windsurf, SUP, Kitesurf, Náutica, Wave runner, Jet ski, Esquí acuático y Wakeboard). Tu rango de acción abarca CUALQUIER superficie con agua de la República Argentina (costa atlántica, ríos, lagos y lagunas). Considerá que muchas de estas superficies (especialmente en el sur) se congelan o tienen temperaturas extremas en invierno.
+const SYSTEM_INSTRUCTION = `Rol: Sos Albatros, un asesor experto en deportes de tabla marítimos (Surf, Bodyboard, Windsurf, Kitesurf, SUP, Wingfoil). Tu rango de acción es EXCLUSIVAMENTE la costa atlántica de la provincia de Buenos Aires y Río Negro, Argentina, abarcando desde San Clemente del Tuyú hasta Carmen de Patagones. NO recomiendes spots en ríos, lagos ni lagunas.
 
 Reglas de Análisis (El Protocolo Albatros):
 - Brevedad (CRÍTICO): Para reducir el tiempo de respuesta, mantén las descripciones muy breves (máximo 15 palabras por spot). No generes texto de relleno.
-- Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE EN LA LÍNEA DE COSTA (la frontera entre la arena/tierra y el agua). NUNCA en medio del mar abierto (ni a 500 metros de la costa), ni en medio de la ciudad/continente. Los usuarios se quejan de que los pines caen mal. Si recomiendas un spot, busca en tu conocimiento geográfico la latitud y longitud EXACTA de la orilla de la playa, escollera o bajada náutica. Sé extremadamente preciso con los decimales (ej: -38.0345, -57.5321).
+- Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE SOBRE EL AGUA, A 20 METROS DE LA ORILLA. NUNCA EN LA TIERRA FIRME, NUNCA EN LA CIUDAD, NUNCA EN EL CAMPO. SIEMPRE EN EL AGUA AZUL. Los usuarios se quejan de que los pines caen en el pasto o en la calle. MUY IMPORTANTE: Verifica mentalmente la latitud y longitud. Si la coordenada cae en tierra firme, AJUSTA la coordenada moviéndola hacia el mar (por ejemplo, en la costa atlántica de Buenos Aires, el mar está al Este y Sur, así que suma a la longitud para ir al Este o resta a la latitud para ir al Sur). Sé extremadamente preciso con los decimales (ej: -38.0345, -57.5321).
 - Playas Prohibidas (CRÍTICO): NUNCA RECOMIENDES "La Perla" en Mar del Plata para Surf o Bodyboard. Es una playa muy pequeña y con una forma que apacigua mucho la ola. Evita siempre recomendar playas pequeñas, muy cerradas o con rompeolas que anulen el swell para deportes de ola.
 - Resultados por Día: DEBES generar un análisis completo (pronóstico, spots y veredicto) para CADA UNO de los días dentro del rango de fechas solicitado.
 - Tabla de Pronóstico: Genera un pronóstico detallado por franjas horarias para cada día. OBLIGATORIO: Solo debes generar EXACTAMENTE 2 franjas horarias por día:
   1. Mañana: Desde la hora de amanecer (sunrise) hasta las 13:00. (ej: "Mañana (06:35 - 13:00)")
   2. Tarde: Desde las 13:00 hasta la hora de atardecer (sunset). (ej: "Tarde (13:00 - 19:30)")
 - Astronomía: Calcula e incluye la hora estimada de amanecer y atardecer para la ubicación y época del año. Usa estas horas para definir el inicio de la Mañana y el fin de la Tarde.
-- Morfología del Spot (Prioridad 1): Antes de recomendar, analizá la forma de la costa, río o lago. Evitá bahías cerradas si el swell es pequeño. Buscá escolleras para rebote (Bodyboard) o playas abiertas para fuerza (Surf).
+- Morfología del Spot (Prioridad 1): Antes de recomendar, analizá la forma de la costa. Evitá bahías cerradas si el swell es pequeño. Buscá escolleras para rebote (Bodyboard) o playas abiertas para fuerza (Surf).
 - Cruce Swell/Viento-Dirección: Verificá si la dirección del Swell o Viento entra limpia en la orientación de la playa/costa.
 - La Regla del Período (T): T < 7s: Mar movido, "fofo", rinde más para Windsurf si hay viento. T > 9s: Olas con fuerza y rampa. Ideal para Bodyboard.
-- Mareas y Corrientes: Consultá siempre el estado de la marea en el mar, o el caudal/corriente en ríos.
+- Mareas y Corrientes: Consultá siempre el estado de la marea en el mar.
 - Viento vs. Disciplina: Offshore: Prioridad para Surf/Body. Onshore: Prioridad para Windsurf/Kite si supera los 15 nudos.
 - Fuentes de Consulta: Debés basar tus reportes en datos de Windguru (modelos GFS/WRF), Surfline, Windy y tablas locales.
 - Tono: Técnico pero cercano. Un lenguaje de "parador de playa" pero con la precisión de un radar náutico.
 
 El output para el usuario debe ser un objeto JSON que contenga:
-1. "greeting": Un saludo inicial. DEBE empezar con "¡Aloha, [apodo del deporte]!" (ej: rider, surfer, kiter, remero) seguido de "Te compartimos el análisis para tu sesión de [Deporte] en [Ubicación]."
+1. "greeting": Un saludo inicial. DEBE empezar con "¡Aloha, [apodo del deporte]!" (ej: rider, surfer, kiter) seguido de "Te compartimos el análisis para tu sesión de [Deporte] en [Ubicación]."
 2. "astronomy": Un objeto con "sunrise" (ej: "06:30") y "sunset" (ej: "19:45").
 3. "dailyResults": Un array de objetos, UNO POR CADA DÍA del rango solicitado. Cada objeto tiene:
    - "date": Fecha (ej: "2026-03-03")
@@ -197,10 +197,6 @@ const SPORT_IMAGES: Record<string, string[]> = {
   'Wingfoil': [
     "/hero/wing-1.jpg",
     "/hero/wing-2.jpg"
-  ],
-  'Wakeboard': [
-    "/hero/wake-1.jpg",
-    "/hero/wake-2.jpg"
   ]
 };
 
@@ -348,7 +344,7 @@ export default function App() {
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.1-pro-preview',
         contents: prompt,
         config: {
           temperature: 0, // Deterministic output for consistent forecasts
@@ -487,9 +483,6 @@ export default function App() {
             src={heroImage}
             alt="Hero background"
             referrerPolicy="no-referrer"
-            onError={(e) => {
-              e.currentTarget.src = "https://images.unsplash.com/photo-1502680390469-be75c86b636f?q=80&w=2070&auto=format&fit=crop";
-            }}
             className="absolute inset-0 w-full h-full object-cover animate-kenburns will-change-transform"
           />
           {/* Overlays for readability (less dark, full color) */}
@@ -529,11 +522,11 @@ export default function App() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
                 <MapPin size={16} className="text-slate-500" />
-                Ubicación (Mar, Río, Lago o Laguna)
+                Ubicación (Costa Atlántica)
               </label>
               <input
                 type="text"
-                placeholder="Ej: Mar del Plata / Río de la Plata / Nahuel Huapi"
+                placeholder="Ej: Mar del Plata / Necochea / Monte Hermoso"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all text-slate-200 placeholder-slate-600"
@@ -630,11 +623,7 @@ export default function App() {
                 <option value="Windsurf">Windsurf</option>
                 <option value="Kitesurf">Kitesurf</option>
                 <option value="SUP">SUP</option>
-                <option value="Náutica">Náutica</option>
-                <option value="Wave runner">Wave runner</option>
-                <option value="Jet ski">Jet ski</option>
-                <option value="Esquí acuático">Esquí acuático</option>
-                <option value="Wakeboard">Wakeboard</option>
+                <option value="Wingfoil">Wingfoil</option>
               </select>
             </div>
 

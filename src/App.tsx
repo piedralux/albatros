@@ -474,14 +474,8 @@ export default function App() {
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-cyan-900 selection:text-cyan-50">
       {/* Header */}
       <header className="bg-slate-950/80 backdrop-blur-md border-b border-slate-800 text-white py-4 px-4 sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto flex items-center justify-center gap-3">
-          <div className="bg-cyan-500/10 p-2.5 rounded-xl text-cyan-400 border border-cyan-500/20">
-            <Waves size={24} strokeWidth={2.5} />
-          </div>
-          <div className="flex flex-col items-center">
-            <h1 className="text-2xl font-bold tracking-tight text-white leading-none">Albatros</h1>
-            <p className="text-slate-400 text-[10px] font-medium uppercase tracking-widest mt-1">Radar Acuático</p>
-          </div>
+        <div className="max-w-5xl mx-auto flex items-center justify-center">
+          <img src="/logo.png" alt="Albatros" className="h-[70px] w-auto" />
         </div>
       </header>
 
@@ -505,11 +499,11 @@ export default function App() {
         
         {/* Content */}
         <div className="relative z-10 max-w-5xl mx-auto px-4 text-center mt-10">
-          <h2 className="text-4xl md:text-6xl font-bold text-white mb-6 tracking-tight drop-shadow-lg">
-            Pronóstico Inteligente para <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Deportes Acuáticos</span>
-          </h2>
+          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 tracking-tight drop-shadow-lg">
+            Radar de points acuáticos.
+          </h1>
           <p className="text-slate-200 max-w-2xl mx-auto text-lg md:text-xl leading-relaxed drop-shadow-md font-medium">
-            Contanos dónde estás, qué deporte hacés y hasta dónde te podés mover. Nosotros cruzamos los datos y te tiramos la posta del mejor spot.
+            Contanos dónde estás, qué deporte hacés y te tiramos la posta del mejor point para tu metida.
           </p>
         </div>
       </section>
@@ -986,8 +980,8 @@ export default function App() {
                             style={{ height: '100%', width: '100%', zIndex: 0 }}
                           >
                             <TileLayer
-                              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                              attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                             />
                             {currentSpots.map((spot: any, index: number) => (
                               <Marker key={index} position={[spot.lat, spot.lng]}>

@@ -65,7 +65,8 @@ const SYSTEM_INSTRUCTION = `Rol: Sos Albatros, un asesor experto en deportes acu
 
 Reglas de Análisis (El Protocolo Albatros):
 - Brevedad (CRÍTICO): Para reducir el tiempo de respuesta, mantén las descripciones muy breves (máximo 15 palabras por spot). No generes texto de relleno.
-- Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE EN LA LÍNEA DE COSTA (la frontera entre la tierra y el agua). NUNCA en medio del mar abierto ni en medio de la ciudad/continente. Los usuarios se quejan de que los pines caen mal. Si recomiendas un spot, busca en tu conocimiento geográfico la latitud y longitud EXACTA de la playa, escollera o bajada náutica. Sé extremadamente preciso con los decimales.
+- Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE EN LA LÍNEA DE COSTA (la frontera entre la arena/tierra y el agua). NUNCA en medio del mar abierto (ni a 500 metros de la costa), ni en medio de la ciudad/continente. Los usuarios se quejan de que los pines caen mal. Si recomiendas un spot, busca en tu conocimiento geográfico la latitud y longitud EXACTA de la orilla de la playa, escollera o bajada náutica. Sé extremadamente preciso con los decimales (ej: -38.0345, -57.5321).
+- Playas Prohibidas (CRÍTICO): NUNCA RECOMIENDES "La Perla" en Mar del Plata para Surf o Bodyboard. Es una playa muy pequeña y con una forma que apacigua mucho la ola. Evita siempre recomendar playas pequeñas, muy cerradas o con rompeolas que anulen el swell para deportes de ola.
 - Resultados por Día: DEBES generar un análisis completo (pronóstico, spots y veredicto) para CADA UNO de los días dentro del rango de fechas solicitado.
 - Tabla de Pronóstico: Genera un pronóstico detallado por franjas horarias para cada día. OBLIGATORIO: Solo debes generar EXACTAMENTE 2 franjas horarias por día:
   1. Mañana: Desde la hora de amanecer (sunrise) hasta las 13:00. (ej: "Mañana (06:35 - 13:00)")
@@ -178,13 +179,32 @@ const getDirectionRotation = (dir: string) => {
   return map[dir.toUpperCase()] ?? 0;
 };
 
-const HERO_IMAGES = [
-  "https://images.unsplash.com/photo-1502680390469-be75c86b636f?q=80&w=2070&auto=format&fit=crop", // Surf action
-  "https://images.unsplash.com/photo-1537154835319-14f38d108bba?q=80&w=2070&auto=format&fit=crop", // Kitesurf jump
-  "https://images.unsplash.com/photo-1530866495561-507c9faab2ed?q=80&w=2000&auto=format&fit=crop", // Windsurf
-  "https://images.unsplash.com/photo-1515405295579-ba7b45403062?q=80&w=2000&auto=format&fit=crop", // Surf barrel
-  "https://images.unsplash.com/photo-1520208422220-d12a3c588e6c?q=80&w=2000&auto=format&fit=crop"  // Wakeboard
-];
+const SPORT_IMAGES: Record<string, string[]> = {
+  'Surf': [
+    "/hero/surf-1.jpg", "/hero/surf-2.jpg", "/hero/surf-3.jpg", "/hero/surf-4.jpg", "/hero/surf-5.jpg",
+    "/hero/surf-6.jpg", "/hero/surf-7.jpg", "/hero/surf-8.jpg", "/hero/surf-9.jpg", "/hero/surf-10.jpg"
+  ],
+  'Bodyboard': [
+    "/hero/bodyboard-1.jpg", "/hero/bodyboard-2.jpg", "/hero/bodyboard-3.jpg", "/hero/bodyboard-4.jpg",
+    "/hero/bodyboard-5.jpg", "/hero/bodyboard-6.jpg", "/hero/bodyboard-7.jpg", "/hero/bodyboard-8.jpg"
+  ],
+  'Kitesurf': [
+    "/hero/kite-1.jpg", "/hero/kite-2.jpg", "/hero/kite-3.jpg", "/hero/kite-4.jpg", "/hero/kite-5.jpg"
+  ],
+  'Windsurf': [
+    "/hero/wind-1.jpg", "/hero/wind-2.jpg", "/hero/wind-3.jpg", "/hero/wind-4.jpg", "/hero/wind-5.jpg"
+  ],
+  'Wingfoil': [
+    "/hero/wing-1.jpg",
+    "/hero/wing-2.jpg"
+  ],
+  'Wakeboard': [
+    "/hero/wake-1.jpg",
+    "/hero/wake-2.jpg"
+  ]
+};
+
+const HERO_IMAGES = SPORT_IMAGES['Surf']; // Default fallback
 
 export default function App() {
   const getTomorrowDate = () => {
@@ -215,8 +235,9 @@ export default function App() {
   const [heroImage, setHeroImage] = useState(HERO_IMAGES[0]);
 
   useEffect(() => {
-    setHeroImage(HERO_IMAGES[Math.floor(Math.random() * HERO_IMAGES.length)]);
-  }, []);
+    const images = SPORT_IMAGES[sport] || HERO_IMAGES;
+    setHeroImage(images[Math.floor(Math.random() * images.length)]);
+  }, [sport]);
 
   useEffect(() => {
     if (result) {
@@ -332,7 +353,6 @@ export default function App() {
         config: {
           temperature: 0, // Deterministic output for consistent forecasts
           systemInstruction: SYSTEM_INSTRUCTION,
-          tools: [{ googleSearch: {} }],
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -469,9 +489,14 @@ export default function App() {
       <section className="relative w-full overflow-hidden border-b border-slate-800 h-[500px] flex items-center justify-center">
         {/* Background Image */}
         <div className="absolute inset-0 w-full h-full z-0 bg-slate-900 overflow-hidden">
-          <div 
-            className="absolute inset-0 w-full h-full bg-cover bg-center animate-kenburns will-change-transform"
-            style={{ backgroundImage: `url('${heroImage}')` }}
+          <img 
+            src={heroImage}
+            alt="Hero background"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              e.currentTarget.src = "https://images.unsplash.com/photo-1502680390469-be75c86b636f?q=80&w=2070&auto=format&fit=crop";
+            }}
+            className="absolute inset-0 w-full h-full object-cover animate-kenburns will-change-transform"
           />
           {/* Overlays for readability (less dark, full color) */}
           <div className="absolute inset-0 bg-slate-950/40"></div>

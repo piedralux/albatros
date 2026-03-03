@@ -91,7 +91,7 @@ El output para el usuario debe ser un objeto JSON que contenga:
    - "verdict": Veredicto corto para ESE día (máximo 2 oraciones).`;
 
 const AdSlot = ({ className = '' }: { className?: string }) => (
-  <div className={`bg-slate-900/50 border border-slate-800 border-dashed flex flex-col items-center justify-center text-slate-500 text-sm p-4 rounded-xl ${className}`}>
+  <div className={`bg-slate-900/50 backdrop-blur-md border border-slate-800 border-dashed flex flex-col items-center justify-center text-slate-500 text-sm p-4 rounded-xl ${className}`}>
     <span className="font-medium text-slate-600 mb-1">Espacio Publicitario</span>
     <span className="text-xs opacity-50">(Google Ads)</span>
   </div>
@@ -179,24 +179,26 @@ const getDirectionRotation = (dir: string) => {
   return map[dir.toUpperCase()] ?? 0;
 };
 
+const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/piedralux/albatros/main/public";
+
 const SPORT_IMAGES: Record<string, string[]> = {
   'Surf': [
-    "/hero/surf-1.jpg", "/hero/surf-2.jpg", "/hero/surf-3.jpg", "/hero/surf-4.jpg", "/hero/surf-5.jpg",
-    "/hero/surf-6.jpg", "/hero/surf-7.jpg", "/hero/surf-8.jpg", "/hero/surf-9.jpg", "/hero/surf-10.jpg"
+    `${GITHUB_RAW_BASE}/hero/surf-1.jpg`, `${GITHUB_RAW_BASE}/hero/surf-2.jpg`, `${GITHUB_RAW_BASE}/hero/surf-3.jpg`, `${GITHUB_RAW_BASE}/hero/surf-4.jpg`, `${GITHUB_RAW_BASE}/hero/surf-5.jpg`,
+    `${GITHUB_RAW_BASE}/hero/surf-6.jpg`, `${GITHUB_RAW_BASE}/hero/surf-7.jpg`, `${GITHUB_RAW_BASE}/hero/surf-8.jpg`, `${GITHUB_RAW_BASE}/hero/surf-9.jpg`, `${GITHUB_RAW_BASE}/hero/surf-10.jpg`
   ],
   'Bodyboard': [
-    "/hero/bodyboard-1.jpg", "/hero/bodyboard-2.jpg", "/hero/bodyboard-3.jpg", "/hero/bodyboard-4.jpg",
-    "/hero/bodyboard-5.jpg", "/hero/bodyboard-6.jpg", "/hero/bodyboard-7.jpg", "/hero/bodyboard-8.jpg"
+    `${GITHUB_RAW_BASE}/hero/bodyboard-1.jpg`, `${GITHUB_RAW_BASE}/hero/bodyboard-2.jpg`, `${GITHUB_RAW_BASE}/hero/bodyboard-3.jpg`, `${GITHUB_RAW_BASE}/hero/bodyboard-4.jpg`,
+    `${GITHUB_RAW_BASE}/hero/bodyboard-5.jpg`, `${GITHUB_RAW_BASE}/hero/bodyboard-6.jpg`, `${GITHUB_RAW_BASE}/hero/bodyboard-7.jpg`, `${GITHUB_RAW_BASE}/hero/bodyboard-8.jpg`
   ],
   'Kitesurf': [
-    "/hero/kite-1.jpg", "/hero/kite-2.jpg", "/hero/kite-3.jpg", "/hero/kite-4.jpg", "/hero/kite-5.jpg"
+    `${GITHUB_RAW_BASE}/hero/kite-1.jpg`, `${GITHUB_RAW_BASE}/hero/kite-2.jpg`, `${GITHUB_RAW_BASE}/hero/kite-3.jpg`, `${GITHUB_RAW_BASE}/hero/kite-4.jpg`, `${GITHUB_RAW_BASE}/hero/kite-5.jpg`
   ],
   'Windsurf': [
-    "/hero/wind-1.jpg", "/hero/wind-2.jpg", "/hero/wind-3.jpg", "/hero/wind-4.jpg", "/hero/wind-5.jpg"
+    `${GITHUB_RAW_BASE}/hero/wind-1.jpg`, `${GITHUB_RAW_BASE}/hero/wind-2.jpg`, `${GITHUB_RAW_BASE}/hero/wind-3.jpg`, `${GITHUB_RAW_BASE}/hero/wind-4.jpg`, `${GITHUB_RAW_BASE}/hero/wind-5.jpg`
   ],
   'Wingfoil': [
-    "/hero/wing-1.jpg",
-    "/hero/wing-2.jpg"
+    `${GITHUB_RAW_BASE}/hero/wing-1.jpg`,
+    `${GITHUB_RAW_BASE}/hero/wing-2.jpg`
   ]
 };
 
@@ -467,31 +469,32 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-cyan-900 selection:text-cyan-50">
+    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-cyan-900 selection:text-cyan-50 relative">
+      {/* Global Background Image for Hero Area */}
+      <div className="absolute top-0 left-0 w-full h-[850px] lg:h-[950px] z-0 overflow-hidden pointer-events-none">
+        <img 
+          src={heroImage}
+          alt="Hero background"
+          referrerPolicy="no-referrer"
+          className="absolute inset-0 w-full h-full object-cover animate-kenburns will-change-transform"
+        />
+        {/* Overlays for readability and smooth fade to background */}
+        <div className="absolute inset-0 bg-slate-950/40"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-transparent to-transparent h-32"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent"></div>
+      </div>
+
       {/* Header */}
-      <header className="bg-slate-950/80 backdrop-blur-md border-b border-slate-800 text-white py-4 px-4 sticky top-0 z-50">
+      <header className="bg-slate-950/80 backdrop-blur-md border-b border-slate-800/50 text-white py-4 px-4 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto flex items-center justify-center">
-          <img src="/logo.png" alt="Albatros" className="h-[70px] w-auto" />
+          <img src="https://raw.githubusercontent.com/piedralux/albatros/main/public/logo.png" alt="Albatros" className="h-[70px] w-auto" />
         </div>
       </header>
 
-      {/* Intro Text with Video Background */}
-      <section className="relative w-full overflow-hidden border-b border-slate-800 h-[500px] flex items-center justify-center">
-        {/* Background Image */}
-        <div className="absolute inset-0 w-full h-full z-0 bg-slate-900 overflow-hidden">
-          <img 
-            src={heroImage}
-            alt="Hero background"
-            referrerPolicy="no-referrer"
-            className="absolute inset-0 w-full h-full object-cover animate-kenburns will-change-transform"
-          />
-          {/* Overlays for readability (less dark, full color) */}
-          <div className="absolute inset-0 bg-slate-950/40"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
-        </div>
-        
+      {/* Intro Text */}
+      <section className="relative z-10 w-full flex items-center justify-center pt-24 pb-16 lg:pt-32 lg:pb-24">
         {/* Content */}
-        <div className="relative z-10 max-w-5xl mx-auto px-4 text-center mt-10">
+        <div className="max-w-5xl mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 tracking-tight drop-shadow-lg">
             Radar de points acuáticos.
           </h1>
@@ -502,15 +505,15 @@ export default function App() {
       </section>
 
       {/* Top Ad Slots */}
-      <div className="max-w-5xl mx-auto px-4 py-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="relative z-10 max-w-5xl mx-auto px-4 py-2 grid grid-cols-1 md:grid-cols-2 gap-4">
         <AdSlot className="h-24 w-full" />
         <AdSlot className="h-24 w-full hidden md:flex" />
       </div>
 
-      <main className="max-w-5xl mx-auto p-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <main className="relative z-10 max-w-5xl mx-auto p-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Form Section */}
-        <section className="lg:col-span-5 bg-slate-900 rounded-2xl shadow-xl border border-slate-800 p-6 flex flex-col gap-6">
+        <section className="lg:col-span-5 bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-xl border border-slate-800/80 p-6 flex flex-col gap-6">
           <h2 className="text-xl font-semibold flex items-center gap-2 text-white">
             <Navigation className="text-cyan-500" size={20} />
             Configurá tu sesión
@@ -714,7 +717,7 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-slate-900/50 rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center text-center min-h-[400px]"
+                className="bg-slate-900/50 backdrop-blur-md rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center text-center min-h-[400px]"
               >
                 <RadarLoader />
               </motion.div>
@@ -724,7 +727,7 @@ export default function App() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-slate-900 rounded-2xl shadow-xl border border-slate-800 p-6 md:p-8 h-full flex flex-col"
+                className="bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-xl border border-slate-800/80 p-6 md:p-8 h-full flex flex-col"
               >
                 {/* Ad Slot Top */}
                 <AdSlot className="h-24 w-full mb-6" />
@@ -1034,7 +1037,7 @@ export default function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="bg-slate-900/50 rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center text-center text-slate-500 min-h-[400px]"
+                className="bg-slate-900/50 backdrop-blur-md rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center text-center text-slate-500 min-h-[400px]"
               >
                 <div className="bg-slate-800/50 p-4 rounded-full mb-4 border border-slate-700/50">
                   <Wind size={32} className="text-slate-400" />

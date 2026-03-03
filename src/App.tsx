@@ -65,24 +65,7 @@ const SYSTEM_INSTRUCTION = `Rol: Sos Albatros, un asesor experto en deportes acu
 
 Reglas de Análisis (El Protocolo Albatros):
 - Brevedad (CRÍTICO): Para reducir el tiempo de respuesta, mantén las descripciones muy breves (máximo 15 palabras por spot). No generes texto de relleno.
-- Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE EN LA LÍNEA DE COSTA (la frontera entre la tierra y el agua). NUNCA en medio del mar abierto ni en medio de la ciudad/continente. Los usuarios se quejan de que los pines caen mal. Si recomiendas un spot, busca la latitud y longitud EXACTA de la playa o bajada náutica.
-  BASE DE DATOS DE COORDENADAS EXACTAS (ÚSALAS SI RECOMIENDAS ESTOS SPOTS):
-  - Mar del Plata (Playa Grande): -38.026, -57.531
-  - Mar del Plata (Waikiki/Punta Mogotes): -38.077, -57.543
-  - Chapadmalal (Cruz del Sur): -38.180, -57.640
-  - Miramar (Punta Hermengo): -38.282, -57.832
-  - Necochea (Escollera Sur): -38.580, -58.705
-  - Pinamar (Playa Centro): -37.115, -56.855
-  - Villa Gesell (Playa Centro): -37.255, -56.965
-  - Punta Rasa (San Clemente): -36.290, -56.775
-  - San Isidro (Perú Beach / Río de la Plata): -34.475, -58.495
-  - Rosario (La Florida / Río Paraná): -32.890, -60.685
-  - San Juan (Cuesta del Viento): -30.270, -69.115
-  - Mendoza (Potrerillos): -32.950, -69.190
-  - Bariloche (Playa Bonita / Nahuel Huapi): -41.115, -71.385
-  - Puerto Madryn (Playa Centro): -42.765, -65.030
-  - Rada Tilly (Chubut): -45.925, -67.550
-  Si el spot no está en esta lista, ASEGÚRATE de que las coordenadas caigan exactamente en la costa, no adentro del agua ni en la ciudad.
+- Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE EN LA LÍNEA DE COSTA (la frontera entre la tierra y el agua). NUNCA en medio del mar abierto ni en medio de la ciudad/continente. Los usuarios se quejan de que los pines caen mal. Si recomiendas un spot, busca en tu conocimiento geográfico la latitud y longitud EXACTA de la playa, escollera o bajada náutica. Sé extremadamente preciso con los decimales.
 - Resultados por Día: DEBES generar un análisis completo (pronóstico, spots y veredicto) para CADA UNO de los días dentro del rango de fechas solicitado.
 - Tabla de Pronóstico: Genera un pronóstico detallado por franjas horarias para cada día. OBLIGATORIO: Solo debes generar EXACTAMENTE 2 franjas horarias por día:
   1. Mañana: Desde la hora de amanecer (sunrise) hasta las 13:00. (ej: "Mañana (06:35 - 13:00)")
@@ -202,33 +185,6 @@ const HERO_IMAGES = [
   "https://images.unsplash.com/photo-1515405295579-ba7b45403062?q=80&w=2000&auto=format&fit=crop", // Surf barrel
   "https://images.unsplash.com/photo-1520208422220-d12a3c588e6c?q=80&w=2000&auto=format&fit=crop"  // Wakeboard
 ];
-
-const KNOWN_SPOTS: Record<string, {lat: number, lng: number}> = {
-  "playa grande": { lat: -38.026, lng: -57.531 },
-  "waikiki": { lat: -38.077, lng: -57.543 },
-  "punta mogotes": { lat: -38.065, lng: -57.545 },
-  "chapadmalal": { lat: -38.180, lng: -57.640 },
-  "cruz del sur": { lat: -38.180, lng: -57.640 },
-  "miramar": { lat: -38.282, lng: -57.832 },
-  "punta hermengo": { lat: -38.282, lng: -57.832 },
-  "necochea": { lat: -38.580, lng: -58.705 },
-  "escollera sur": { lat: -38.580, lng: -58.705 },
-  "pinamar": { lat: -37.115, lng: -56.855 },
-  "villa gesell": { lat: -37.255, lng: -56.965 },
-  "punta rasa": { lat: -36.290, lng: -56.775 },
-  "san clemente": { lat: -36.290, lng: -56.775 },
-  "perú beach": { lat: -34.475, lng: -58.495 },
-  "peru beach": { lat: -34.475, lng: -58.495 },
-  "san isidro": { lat: -34.475, lng: -58.495 },
-  "la florida": { lat: -32.890, lng: -60.685 },
-  "rosario": { lat: -32.890, lng: -60.685 },
-  "cuesta del viento": { lat: -30.270, lng: -69.115 },
-  "potrerillos": { lat: -32.950, lng: -69.190 },
-  "playa bonita": { lat: -41.115, lng: -71.385 },
-  "nahuel huapi": { lat: -41.115, lng: -71.385 },
-  "puerto madryn": { lat: -42.765, lng: -65.030 },
-  "rada tilly": { lat: -45.925, lng: -67.550 },
-};
 
 export default function App() {
   const getTomorrowDate = () => {
@@ -376,6 +332,7 @@ export default function App() {
         config: {
           temperature: 0, // Deterministic output for consistent forecasts
           systemInstruction: SYSTEM_INSTRUCTION,
+          tools: [{ googleSearch: {} }],
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -455,28 +412,6 @@ export default function App() {
       const jsonStr = response.text || '{}';
       const parsed = JSON.parse(jsonStr);
       
-      // Post-process to snap coordinates to known spots
-      if (parsed.dailyResults) {
-        parsed.dailyResults.forEach((day: any) => {
-          if (day.bestSpots) {
-            day.bestSpots.forEach((window: any) => {
-              if (window.spots) {
-                window.spots.forEach((spot: any) => {
-                  const spotNameLower = spot.name.toLowerCase();
-                  for (const [knownName, coords] of Object.entries(KNOWN_SPOTS)) {
-                    if (spotNameLower.includes(knownName)) {
-                      spot.lat = coords.lat;
-                      spot.lng = coords.lng;
-                      break;
-                    }
-                  }
-                });
-              }
-            });
-          }
-        });
-      }
-
       setResult(parsed);
       
       // Save successful result to cache

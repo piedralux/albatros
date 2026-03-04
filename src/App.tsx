@@ -359,7 +359,7 @@ export default function App() {
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
+        model: 'gemini-3-flash-preview',
         contents: prompt,
         config: {
           temperature: 0, // Deterministic output for consistent forecasts
@@ -452,7 +452,7 @@ export default function App() {
       if (err.message?.includes('429') || err.message?.includes('RESOURCE_EXHAUSTED')) {
         console.warn("Rate limit hit. Using mock data.");
         setResult(MOCK_RESULT);
-        setError('⚠️ Límite de consultas gratuitas de Google alcanzado. Te mostramos un reporte de demostración para que veas cómo funciona.');
+        setError('⚠️ Estamos con mucha demanda en el radar. Te mostramos un reporte de demostración mientras liberamos el canal. ¡Probá de nuevo en unos minutos!');
       } else {
         setError(`Hubo un error al consultar a Albatros (${err.message || 'Error desconocido'}). Por favor, intentá de nuevo.`);
       }

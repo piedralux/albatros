@@ -91,7 +91,7 @@ El output para el usuario debe ser un objeto JSON que contenga:
    - "verdict": Veredicto corto para ESE día (máximo 2 oraciones).`;
 
 const AdSlot = ({ className = '' }: { className?: string }) => (
-  <div className={`bg-slate-900/50 backdrop-blur-md border border-slate-800 border-dashed flex flex-col items-center justify-center text-slate-500 text-sm p-4 rounded-xl ${className}`}>
+  <div className={`bg-slate-900/30 backdrop-blur-md border border-slate-800 border-dashed flex flex-col items-center justify-center text-slate-500 text-sm p-4 rounded-xl ${className}`}>
     <span className="font-medium text-slate-600 mb-1">Espacio Publicitario</span>
     <span className="text-xs opacity-50">(Google Ads)</span>
   </div>
@@ -150,7 +150,7 @@ const RadarLoader = ({ sport = 'Surf' }: { sport?: string }) => {
 
   return (
     <div className="flex flex-col items-center justify-center space-y-10">
-      <div className="relative w-32 h-32 rounded-full border border-cyan-500/30 bg-slate-900/50 overflow-hidden shadow-[0_0_40px_rgba(6,182,212,0.15)] flex items-center justify-center">
+      <div className="relative w-32 h-32 rounded-full border border-cyan-500/30 bg-slate-900/30 overflow-hidden shadow-[0_0_40px_rgba(6,182,212,0.15)] flex items-center justify-center">
         {/* Radar grid lines */}
         <div className="absolute inset-0 border-2 border-cyan-500/10 rounded-full m-4"></div>
         <div className="absolute inset-0 border-2 border-cyan-500/10 rounded-full m-10"></div>
@@ -621,13 +621,13 @@ export default function App() {
           className="absolute inset-0 w-full h-full object-cover animate-kenburns will-change-transform"
         />
         {/* Overlays for readability and smooth fade to background */}
-        <div className="absolute inset-0 bg-slate-950/40"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-transparent to-transparent h-32"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent"></div>
+        <div className="absolute inset-0 bg-slate-950/20"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-transparent to-transparent h-32"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent"></div>
       </div>
 
       {/* Header */}
-      <header className="bg-slate-950/80 backdrop-blur-md border-b border-slate-800/50 text-white py-4 px-4 sticky top-0 z-50">
+      <header className="bg-slate-950/60 backdrop-blur-md border-b border-slate-800/50 text-white py-4 px-4 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto flex items-center justify-center">
           <img src="https://res.cloudinary.com/dktrerrgh/image/upload/v1772578506/logo_sgdozx.png" alt="Albatros" className="h-[50px] md:h-[70px] w-auto" />
         </div>
@@ -657,7 +657,7 @@ export default function App() {
       <main className="relative z-10 max-w-5xl mx-auto p-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Form Section */}
-        <section className="lg:col-span-5 bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-xl border border-slate-800/80 p-6 flex flex-col gap-6">
+        <section className="lg:col-span-5 bg-slate-900/60 backdrop-blur-md rounded-2xl shadow-xl border border-slate-800/80 p-6 flex flex-col gap-6">
           <h2 className="text-xl font-semibold flex items-center gap-2 text-white">
             <Navigation className="text-cyan-500" size={20} />
             Configurá tu sesión
@@ -703,7 +703,7 @@ export default function App() {
               
               <div className="space-y-3">
                 {/* Desde */}
-                <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 space-y-2">
+                <div className="bg-slate-950/30 p-3 rounded-xl border border-slate-800 space-y-2">
                   <span className="text-xs text-cyan-500 font-medium uppercase tracking-wider block">Desde</span>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-cyan-500/50 focus-within:border-cyan-500">
@@ -727,7 +727,7 @@ export default function App() {
                 </div>
 
                 {/* Hasta */}
-                <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 space-y-2">
+                <div className="bg-slate-950/30 p-3 rounded-xl border border-slate-800 space-y-2">
                   <span className="text-xs text-cyan-500 font-medium uppercase tracking-wider block">Hasta (Máx 3 días)</span>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-cyan-500/50 focus-within:border-cyan-500">
@@ -864,7 +864,7 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-slate-900/50 backdrop-blur-md rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center text-center min-h-[400px]"
+                className="bg-slate-900/30 backdrop-blur-md rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center text-center min-h-[400px]"
               >
                 <RadarLoader sport={sport} />
               </motion.div>
@@ -874,7 +874,7 @@ export default function App() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-xl border border-slate-800/80 p-6 md:p-8 h-full flex flex-col"
+                className="bg-slate-900/60 backdrop-blur-md rounded-2xl shadow-xl border border-slate-800/80 p-6 md:p-8 h-full flex flex-col"
               >
                 <div className="mb-6">
                   <h2 className="text-xl md:text-2xl font-medium text-slate-100 leading-tight w-full text-center md:text-left">
@@ -920,7 +920,7 @@ export default function App() {
                       {/* Integrated Dashboard (Windguru Style Table) */}
                       {currentDay.forecast && currentDay.forecast.length > 0 && (
                         <div className="bg-slate-950/40 border border-slate-800 rounded-xl overflow-hidden mb-6 shadow-lg">
-                          <div className="p-3.5 border-b border-slate-800/50 bg-slate-900/50 flex justify-between items-center">
+                          <div className="p-3.5 border-b border-slate-800/50 bg-slate-900/30 flex justify-between items-center">
                             <h3 className="text-sm md:text-base font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                               <Activity size={18} className="text-cyan-500" />
                               Pronóstico Detallado
@@ -1105,7 +1105,7 @@ export default function App() {
                           </h3>
                           <div className="space-y-6">
                             {currentDay.bestSpots?.map((window: any, i: number) => (
-                              <div key={i} className="bg-slate-950/50 rounded-xl p-5 border border-slate-800/50">
+                              <div key={i} className="bg-slate-950/30 rounded-xl p-5 border border-slate-800/50">
                                 <h4 className="font-bold text-slate-200 mb-4 text-lg border-b border-slate-800 pb-2 flex items-center gap-2">
                                   <Calendar size={18} className="text-cyan-500" />
                                   {window.timeWindow}
@@ -1229,7 +1229,7 @@ export default function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="bg-slate-900/50 backdrop-blur-md rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center text-center text-slate-500 min-h-[400px]"
+                className="bg-slate-900/30 backdrop-blur-md rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center text-center text-slate-500 min-h-[400px]"
               >
                 <div className="bg-slate-800/50 p-4 rounded-full mb-4 border border-slate-700/50">
                   <Wind size={32} className="text-slate-400" />

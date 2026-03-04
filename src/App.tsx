@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
 import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud, CloudRain, Droplet, ArrowRight, Sun, Moon, AlertCircle, ArrowDown } from 'lucide-react';
@@ -97,47 +97,111 @@ const AdSlot = ({ className = '' }: { className?: string }) => (
   </div>
 );
 
-const RadarLoader = () => (
-  <div className="flex flex-col items-center justify-center space-y-10">
-    <div className="relative w-32 h-32 rounded-full border border-cyan-500/30 bg-slate-900/50 overflow-hidden shadow-[0_0_40px_rgba(6,182,212,0.15)] flex items-center justify-center">
-      {/* Radar grid lines */}
-      <div className="absolute inset-0 border-2 border-cyan-500/10 rounded-full m-4"></div>
-      <div className="absolute inset-0 border-2 border-cyan-500/10 rounded-full m-10"></div>
-      <div className="absolute w-full h-[1px] bg-cyan-500/20"></div>
-      <div className="absolute h-full w-[1px] bg-cyan-500/20"></div>
-      
-      {/* Sweeping radar beam */}
-      <motion.div 
-        className="absolute inset-0 rounded-full"
-        style={{
-          background: 'conic-gradient(from 0deg, transparent 70%, rgba(6, 182, 212, 0.1) 80%, rgba(6, 182, 212, 0.5) 100%)'
-        }}
-        animate={{ rotate: 360 }}
-        transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
-      />
-      
-      {/* Blips */}
-      <motion.div 
-        className="absolute w-2 h-2 bg-cyan-400 rounded-full shadow-[0_0_10px_#22d3ee]"
-        style={{ top: '30%', left: '60%' }}
-        animate={{ opacity: [0, 1, 0], scale: [0.5, 1.5, 0.5] }}
-        transition={{ duration: 2.5, repeat: Infinity, times: [0, 0.1, 1] }}
-      />
-      <motion.div 
-        className="absolute w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_10px_#60a5fa]"
-        style={{ top: '65%', left: '35%' }}
-        animate={{ opacity: [0, 1, 0], scale: [0.5, 1.5, 0.5] }}
-        transition={{ duration: 2.5, repeat: Infinity, delay: 1, times: [0, 0.1, 1] }}
-      />
-      
-      <Waves className="relative z-10 text-cyan-400 w-8 h-8 opacity-80" />
+const RadarLoader = ({ sport = 'Surf' }: { sport?: string }) => {
+  const [messageIndex, setMessageIndex] = useState(0);
+  
+  const messages = {
+    'Surf': [
+      'Analizando el swell...',
+      'Buscando la serie perfecta...',
+      'Chequeando el período de las olas...',
+      'Viendo dónde rompe mejor...'
+    ],
+    'Bodyboard': [
+      'Buscando rampas...',
+      'Analizando el rebote en las escolleras...',
+      'Chequeando la fuerza del labio...',
+      'Escaneando tubos...'
+    ],
+    'Windsurf': [
+      'Midiendo rachas...',
+      'Buscando viento constante...',
+      'Analizando el planeo...',
+      'Chequeando la dirección del viento...'
+    ],
+    'Kitesurf': [
+      'Escaneando la ventana de viento...',
+      'Buscando el mejor lanzamiento...',
+      'Analizando la densidad del aire...',
+      'Chequeando condiciones para saltar...'
+    ],
+    'SUP': [
+      'Buscando aguas tranquilas...',
+      'Analizando la deriva...',
+      'Chequeando el viento de costa...',
+      'Escaneando el horizonte...'
+    ],
+    'Wingfoil': [
+      'Analizando el despegue...',
+      'Buscando el mejor foil track...',
+      'Midiendo la presión del viento...',
+      'Chequeando el choppy...'
+    ]
+  };
+
+  const currentMessages = messages[sport as keyof typeof messages] || messages['Surf'];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % currentMessages.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [currentMessages.length]);
+
+  return (
+    <div className="flex flex-col items-center justify-center space-y-10">
+      <div className="relative w-32 h-32 rounded-full border border-cyan-500/30 bg-slate-900/50 overflow-hidden shadow-[0_0_40px_rgba(6,182,212,0.15)] flex items-center justify-center">
+        {/* Radar grid lines */}
+        <div className="absolute inset-0 border-2 border-cyan-500/10 rounded-full m-4"></div>
+        <div className="absolute inset-0 border-2 border-cyan-500/10 rounded-full m-10"></div>
+        <div className="absolute w-full h-[1px] bg-cyan-500/20"></div>
+        <div className="absolute h-full w-[1px] bg-cyan-500/20"></div>
+        
+        {/* Sweeping radar beam */}
+        <motion.div 
+          className="absolute inset-0 rounded-full"
+          style={{
+            background: 'conic-gradient(from 0deg, transparent 70%, rgba(6, 182, 212, 0.1) 80%, rgba(6, 182, 212, 0.5) 100%)'
+          }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+        />
+        
+        {/* Blips */}
+        <motion.div 
+          className="absolute w-2 h-2 bg-cyan-400 rounded-full shadow-[0_0_10px_#22d3ee]"
+          style={{ top: '30%', left: '60%' }}
+          animate={{ opacity: [0, 1, 0], scale: [0.5, 1.5, 0.5] }}
+          transition={{ duration: 2.5, repeat: Infinity, times: [0, 0.1, 1] }}
+        />
+        <motion.div 
+          className="absolute w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_10px_#60a5fa]"
+          style={{ top: '65%', left: '35%' }}
+          animate={{ opacity: [0, 1, 0], scale: [0.5, 1.5, 0.5] }}
+          transition={{ duration: 2.5, repeat: Infinity, delay: 1, times: [0, 0.1, 1] }}
+        />
+        
+        <Waves className="relative z-10 text-cyan-400 w-8 h-8 opacity-80" />
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <h3 className="text-xl font-medium text-slate-200 min-h-[1.75rem]">
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={messageIndex}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              transition={{ duration: 0.3 }}
+            >
+              {currentMessages[messageIndex]}
+            </motion.span>
+          </AnimatePresence>
+        </h3>
+        <p className="text-sm text-cyan-400/80 animate-pulse">Cruzando datos de viento, mareas y geografía</p>
+      </div>
     </div>
-    <div className="flex flex-col items-center gap-2">
-      <h3 className="text-xl font-medium text-slate-200">Analizando el radar...</h3>
-      <p className="text-sm text-cyan-400/80 animate-pulse">Cruzando datos de viento, mareas y geografía</p>
-    </div>
-  </div>
-);
+  );
+};
 
 const getWindColor = (speed: number) => {
   if (speed < 8) return 'bg-blue-500/20 text-blue-300';
@@ -210,8 +274,11 @@ const SPORT_IMAGES: Record<string, string[]> = {
     'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578539/wind-2.jpg'
   ],
   'Wingfoil': [
-    'https://images.unsplash.com/photo-1627226025986-e32502c34d3b?auto=format&fit=crop&w=1920&q=80',
-    'https://images.unsplash.com/photo-1682687220742-aba13b6e50ba?auto=format&fit=crop&w=1920&q=80'
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578535/wind-5.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578536/wind-4.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578537/wind-3.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578539/wind-1.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578539/wind-2.jpg'
   ]
 };
 
@@ -244,6 +311,19 @@ export default function App() {
   const [hasAutoSubmitted, setHasAutoSubmitted] = useState(false);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [heroImage, setHeroImage] = useState(HERO_IMAGES[0]);
+  const [shareOpen, setShareOpen] = useState(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const shareRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (shareRef.current && !shareRef.current.contains(event.target as Node)) {
+        setShareOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const images = SPORT_IMAGES[sport] || HERO_IMAGES;
@@ -312,6 +392,13 @@ export default function App() {
     setError('');
     setResult(null);
     setShowCharts(false);
+
+    // Scroll to results on mobile
+    if (window.innerWidth < 1024) {
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
 
     const params = new URLSearchParams({
       loc: location,
@@ -500,7 +587,7 @@ export default function App() {
       {/* Header */}
       <header className="bg-slate-950/80 backdrop-blur-md border-b border-slate-800/50 text-white py-4 px-4 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto flex items-center justify-center">
-          <img src="https://res.cloudinary.com/dktrerrgh/image/upload/v1772578506/logo_sgdozx.png" alt="Albatros" className="h-[70px] w-auto" />
+          <img src="https://res.cloudinary.com/dktrerrgh/image/upload/v1772578506/logo_sgdozx.png" alt="Albatros" className="h-[50px] md:h-[70px] w-auto" />
         </div>
       </header>
 
@@ -508,11 +595,11 @@ export default function App() {
       <section className="relative z-10 w-full flex items-center justify-center pt-24 pb-16 lg:pt-32 lg:pb-24">
         {/* Content */}
         <div className="max-w-5xl mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 tracking-tight drop-shadow-lg">
+          <h1 className="text-4xl md:text-5xl font-display text-white mb-6 tracking-wider drop-shadow-lg uppercase">
             Recomendador de points acuaticos
           </h1>
-          <p className="text-slate-200 max-w-2xl mx-auto text-lg md:text-xl leading-relaxed drop-shadow-md font-medium">
-            Contanos dónde estás, qué deporte hacés y te tiramos la posta del mejor point para tu metida.
+          <p className="text-slate-200 max-w-2xl mx-auto text-xl md:text-2xl leading-relaxed drop-shadow-md font-normal">
+            ¡Te tiramos la posta del mejor point para tu metida al mar!
           </p>
         </div>
       </section>
@@ -722,7 +809,7 @@ export default function App() {
         </section>
 
         {/* Results Section */}
-        <section className="lg:col-span-7">
+        <section className="lg:col-span-7" ref={resultsRef}>
           <AnimatePresence mode="wait">
             {loading ? (
               <motion.div
@@ -732,7 +819,7 @@ export default function App() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="bg-slate-900/50 backdrop-blur-md rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center text-center min-h-[400px]"
               >
-                <RadarLoader />
+                <RadarLoader sport={sport} />
               </motion.div>
             ) : result ? (
               <motion.div
@@ -742,9 +829,6 @@ export default function App() {
                 exit={{ opacity: 0, y: -10 }}
                 className="bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-xl border border-slate-800/80 p-6 md:p-8 h-full flex flex-col"
               >
-                {/* Ad Slot Top */}
-                <AdSlot className="h-24 w-full mb-6" />
-
                 <div className="mb-6">
                   <h2 className="text-xl md:text-2xl font-medium text-slate-100 leading-tight w-full text-center md:text-left">
                     {result.greeting}
@@ -803,31 +887,31 @@ export default function App() {
                           </div>
                           
                           <div className="overflow-x-auto">
-                            <table className="w-full text-[11px] md:text-xs text-left whitespace-nowrap font-sans tracking-tight">
+                            <table className="w-full text-[13px] md:text-[14px] text-left whitespace-nowrap font-sans tracking-tight border-collapse">
                               <thead>
                                 <tr className="bg-slate-900/30 border-b border-slate-800/50">
-                                  <th className="px-3 py-2 font-medium text-slate-400 sticky left-0 bg-slate-900/90 z-10 border-r border-slate-800/50">Hora</th>
+                                  <th className="px-3 py-3 font-medium text-slate-400 sticky left-0 bg-slate-900/90 z-10 border-r border-slate-800/50 w-24">Hora</th>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <th key={i} className={`px-2 py-2 font-medium text-slate-200 text-center`}>{f.time}</th>
+                                    <th key={i} className={`px-2 py-3 font-medium text-slate-200 text-center border-r border-slate-800/20 last:border-r-0`}>{f.time}</th>
                                   ))}
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-800/50">
                                 {/* Viento */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-2 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle">
+                                  <td className="px-3 py-3 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
                                     <div className="flex items-center gap-1.5 h-full">
-                                      <Wind size={12} className="text-teal-400" /> Viento (kts)
+                                      <Wind size={14} className="text-teal-400" /> Viento
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-1.5 text-center align-middle`}>
-                                      <div className="flex items-center justify-center gap-2">
-                                        <div className={`inline-flex items-center justify-center w-12 h-6 rounded font-medium ${getWindColor(f.windSpeed)}`}>
+                                    <td key={i} className={`px-1 py-2 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                      <div className="flex flex-col items-center justify-center gap-1">
+                                        <div className={`inline-flex items-center justify-center w-12 h-7 rounded font-medium ${getWindColor(f.windSpeed)}`}>
                                           {f.windSpeed}
                                         </div>
-                                        <div className="flex items-center gap-1 text-slate-300 font-medium w-12 justify-start">
-                                          <ArrowDown size={12} style={{ transform: `rotate(${getDirectionRotation(f.windDirection)}deg)` }} />
+                                        <div className="flex items-center gap-1 text-slate-300 font-medium justify-center text-[10px]">
+                                          <ArrowDown size={10} style={{ transform: `rotate(${getDirectionRotation(f.windDirection)}deg)` }} />
                                           <span>{f.windDirection}</span>
                                         </div>
                                       </div>
@@ -836,21 +920,21 @@ export default function App() {
                                 </tr>
                                 {/* Olas */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-2 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle">
+                                  <td className="px-3 py-3 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
                                     <div className="flex items-center gap-1.5 h-full">
-                                      <Waves size={12} className="text-blue-400" /> Olas (m)
+                                      <Waves size={14} className="text-blue-400" /> Olas
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-1.5 text-center align-middle`}>
-                                      <div className="flex items-center justify-center gap-2">
-                                        <div className={`inline-flex items-center justify-center w-12 h-6 rounded font-medium ${getWaveColor(f.waveHeight)}`}>
+                                    <td key={i} className={`px-1 py-2 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                      <div className="flex flex-col items-center justify-center gap-1">
+                                        <div className={`inline-flex items-center justify-center w-12 h-7 rounded font-medium ${getWaveColor(f.waveHeight)}`}>
                                           {f.waveHeight}
                                         </div>
-                                        <div className="flex items-center gap-1 text-slate-300 font-medium w-12 justify-start">
+                                        <div className="flex items-center gap-1 text-slate-300 font-medium justify-center text-[10px]">
                                           {f.waveDirection && f.waveDirection !== '-' ? (
                                             <>
-                                              <ArrowDown size={12} style={{ transform: `rotate(${getDirectionRotation(f.waveDirection)}deg)` }} />
+                                              <ArrowDown size={10} style={{ transform: `rotate(${getDirectionRotation(f.waveDirection)}deg)` }} />
                                               <span>{f.waveDirection}</span>
                                             </>
                                           ) : (
@@ -863,54 +947,51 @@ export default function App() {
                                 </tr>
                                 {/* Período */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-2 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle">
+                                  <td className="px-3 py-3 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
                                     <div className="flex items-center gap-1.5 h-full">
-                                      <Activity size={12} className="text-indigo-400" /> Período (s)
+                                      <Activity size={14} className="text-indigo-400" /> Período
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-1.5 text-center align-middle`}>
-                                      <div className="flex items-center justify-center gap-2">
-                                        <div className={`inline-flex items-center justify-center w-12 h-6 rounded font-medium ${getPeriodColor(f.wavePeriod)}`}>
-                                          {f.wavePeriod}
+                                    <td key={i} className={`px-1 py-2 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                      <div className="flex items-center justify-center">
+                                        <div className={`inline-flex items-center justify-center w-12 h-7 rounded font-medium ${getPeriodColor(f.wavePeriod)}`}>
+                                          {f.wavePeriod}s
                                         </div>
-                                        <div className="w-12"></div>
                                       </div>
                                     </td>
                                   ))}
                                 </tr>
                                 {/* Nubosidad */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-2 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle">
+                                  <td className="px-3 py-3 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
                                     <div className="flex items-center gap-1.5 h-full">
-                                      <Cloud size={12} className="text-slate-400" /> Nubosidad (%)
+                                      <Cloud size={14} className="text-slate-400" /> Nubes
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-1.5 text-center align-middle`}>
-                                      <div className="flex items-center justify-center gap-2">
-                                        <div className={`inline-flex items-center justify-center w-12 h-6 rounded font-medium ${getCloudCoverColor(f.cloudCover)}`}>
-                                          {f.cloudCover}
+                                    <td key={i} className={`px-1 py-2 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                      <div className="flex items-center justify-center">
+                                        <div className={`inline-flex items-center justify-center w-12 h-7 rounded font-medium ${getCloudCoverColor(f.cloudCover)}`}>
+                                          {f.cloudCover}%
                                         </div>
-                                        <div className="w-12"></div>
                                       </div>
                                     </td>
                                   ))}
                                 </tr>
                                 {/* Clima */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-2 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle">
+                                  <td className="px-3 py-3 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
                                     <div className="flex items-center gap-1.5 h-full">
-                                      <Thermometer size={12} className="text-orange-400" /> Temp. (°C)
+                                      <Thermometer size={14} className="text-orange-400" /> Temp.
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-1.5 text-center align-middle`}>
-                                      <div className="flex items-center justify-center gap-2">
-                                        <div className="inline-flex items-center justify-center w-12 h-6 rounded font-medium bg-orange-500/20 text-orange-300">
+                                    <td key={i} className={`px-1 py-2 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                      <div className="flex items-center justify-center">
+                                        <div className="inline-flex items-center justify-center w-12 h-7 rounded font-medium bg-orange-500/20 text-orange-300">
                                           {f.temperature}°
                                         </div>
-                                        <div className="w-12"></div>
                                       </div>
                                     </td>
                                   ))}
@@ -930,50 +1011,98 @@ export default function App() {
                         </p>
                       </div>
 
-                      {/* Share Buttons (Between Dashboard and Report) */}
-                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-8">
+                      {/* Share Dropdown */}
+                      <div className="relative mb-8 flex justify-center md:justify-start" ref={shareRef}>
                         <button
-                          onClick={handleShare}
-                          className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-medium transition-colors text-sm border border-slate-700"
+                          onClick={() => setShareOpen(!shareOpen)}
+                          className="flex items-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-cyan-900/20"
                         >
-                          {copied ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} className="text-cyan-400" />}
-                          {copied ? '¡Copiado!' : 'Copiar Link'}
+                          <Share2 size={18} />
+                          Compartir informe
+                          <ChevronDown size={16} className={`transition-transform duration-200 ${shareOpen ? 'rotate-180' : ''}`} />
                         </button>
-                        <a
-                          href={`https://api.whatsapp.com/send?text=${encodeURIComponent('¡Mirá el reporte de Albatros para mi próxima sesión! 🌊🏄‍♂️\n\n' + window.location.href)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-4 py-2 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] rounded-lg font-medium transition-colors text-sm border border-[#25D366]/20"
-                        >
-                          <Share2 size={16} />
-                          WhatsApp
-                        </a>
+
+                        <AnimatePresence>
+                          {shareOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                              className="absolute top-full mt-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden"
+                            >
+                              <button
+                                onClick={() => {
+                                  handleShare();
+                                  setShareOpen(false);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800 transition-colors text-slate-200 text-sm"
+                              >
+                                {copied ? <Check size={18} className="text-emerald-400" /> : <Copy size={18} className="text-cyan-400" />}
+                                <span>{copied ? '¡Copiado!' : 'Copiar Link'}</span>
+                              </button>
+                              <a
+                                href={`https://api.whatsapp.com/send?text=${encodeURIComponent('¡Mirá el reporte de Albatros para mi próxima sesión! 🌊🏄‍♂️\n\n' + window.location.href)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => setShareOpen(false)}
+                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800 transition-colors text-slate-200 text-sm border-t border-slate-800/50"
+                              >
+                                <Share2 size={18} className="text-[#25D366]" />
+                                <span>WhatsApp</span>
+                              </a>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                       
                       {/* Spots List */}
-                      <div className="space-y-6 mb-8">
-                        {currentDay.bestSpots?.map((window: any, i: number) => (
-                          <div key={i} className="bg-slate-950/50 rounded-xl p-5 border border-slate-800">
-                            <h3 className="font-bold text-slate-200 mb-4 text-lg border-b border-slate-800 pb-2 flex items-center gap-2">
-                              <Calendar size={18} className="text-cyan-500" />
-                              {window.timeWindow}
-                            </h3>
-                            <div className="space-y-4">
-                              {window.spots?.map((spot: any, j: number) => (
-                                <div key={j} className="flex gap-3">
-                                  <div className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold rounded-full w-6 h-6 flex items-center justify-center shrink-0 text-sm mt-0.5">
-                                    {j + 1}
-                                  </div>
-                                  <div>
-                                    <h4 className="font-semibold text-slate-200">{spot.name}</h4>
-                                    <p className="text-slate-400 text-sm mt-1">{spot.description}</p>
-                                  </div>
+                      <div className="mb-8">
+                        <div className="mb-4 bg-gradient-to-br from-cyan-900/40 to-slate-900 border border-cyan-500/30 rounded-xl p-6 shadow-[0_0_30px_rgba(6,182,212,0.15)]">
+                          <h3 className="text-xl font-bold flex items-center gap-2 text-cyan-400 mb-6">
+                            <Waves size={24} />
+                            Los points
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {currentDay.bestSpots?.map((window: any, i: number) => (
+                              <div key={i} className="bg-slate-950/50 rounded-xl p-5 border border-slate-800/50">
+                                <h4 className="font-bold text-slate-200 mb-4 text-md border-b border-slate-800 pb-2 flex items-center gap-2">
+                                  <Calendar size={16} className="text-cyan-500" />
+                                  {window.timeWindow}
+                                </h4>
+                                <div className="space-y-4">
+                                  {window.spots?.map((spot: any, j: number) => (
+                                    <div key={j} className="flex gap-3">
+                                      <div className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] mt-0.5">
+                                        {j + 1}
+                                      </div>
+                                      <div>
+                                        <h5 className="font-semibold text-slate-200 text-sm">{spot.name}</h5>
+                                        <p className="text-slate-400 text-xs mt-1 leading-relaxed">{spot.description}</p>
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        </div>
                       </div>
+
+                      {/* Veredicto Albatros */}
+                      {currentDay.verdict && (
+                        <div className="mb-8 bg-gradient-to-br from-cyan-900/40 to-slate-900 border border-cyan-500/30 rounded-xl p-6 shadow-[0_0_30px_rgba(6,182,212,0.15)]">
+                          <h3 className="text-xl font-bold flex items-center gap-2 text-cyan-400 mb-3">
+                            <Target size={24} />
+                            Veredicto Albatros
+                          </h3>
+                          <p className="text-slate-200 leading-relaxed font-medium">
+                            {currentDay.verdict}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Ad Slot Middle */}
+                      <AdSlot className="h-32 w-full mb-8" />
 
                       {/* Map */}
                       {currentSpots.length > 0 && (
@@ -1001,44 +1130,20 @@ export default function App() {
                           </MapContainer>
                         </div>
                       )}
-
-                      {/* Ad Slot Middle */}
-                      <AdSlot className="h-32 w-full mb-8" />
-
-                      {/* Veredicto Albatros */}
-                      {currentDay.verdict && (
-                        <div className="mb-8 bg-gradient-to-br from-cyan-900/40 to-slate-900 border border-cyan-500/30 rounded-xl p-6 shadow-[0_0_30px_rgba(6,182,212,0.1)]">
-                          <h3 className="text-xl font-bold flex items-center gap-2 text-cyan-400 mb-3">
-                            <Target size={24} />
-                            Veredicto Albatros
-                          </h3>
-                          <p className="text-slate-200 leading-relaxed font-medium">
-                            {currentDay.verdict}
-                          </p>
-                        </div>
-                      )}
                     </motion.div>
                   );
                 })()}
 
                 {/* Share Buttons (Bottom) */}
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-8">
+                <div className="relative flex justify-center md:justify-start mb-8">
                   <button
-                    onClick={handleShare}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-medium transition-colors text-sm border border-slate-700"
+                    onClick={() => setShareOpen(!shareOpen)}
+                    className="flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium transition-all border border-slate-700"
                   >
-                    {copied ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} className="text-cyan-400" />}
-                    {copied ? '¡Copiado!' : 'Copiar Link'}
+                    <Share2 size={18} />
+                    Compartir informe
+                    <ChevronDown size={16} className={`transition-transform duration-200 ${shareOpen ? 'rotate-180' : ''}`} />
                   </button>
-                  <a
-                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent('¡Mirá el reporte de Albatros para mi próxima sesión! 🌊🏄‍♂️\n\n' + window.location.href)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] rounded-lg font-medium transition-colors text-sm border border-[#25D366]/20"
-                  >
-                    <Share2 size={16} />
-                    WhatsApp
-                  </a>
                 </div>
 
                 {/* Ad Slot Bottom */}

@@ -324,7 +324,7 @@ export default function App() {
 
   useEffect(() => {
     clickSound.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3');
-    successSound.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3');
+    successSound.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3');
     if (clickSound.current) clickSound.current.volume = 0.3;
     if (successSound.current) successSound.current.volume = 0.4;
   }, []);
@@ -349,6 +349,14 @@ export default function App() {
     const images = SPORT_IMAGES[sport] || HERO_IMAGES;
     setHeroImage(images[Math.floor(Math.random() * images.length)]);
   }, [sport]);
+
+  useEffect(() => {
+    if (result && !loading) {
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
+  }, [result, loading]);
 
   useEffect(() => {
     if (result) {
@@ -428,13 +436,6 @@ export default function App() {
     
     // Initialize abort controller
     abortControllerRef.current = new AbortController();
-
-    // Scroll to results on mobile
-    if (window.innerWidth < 1024) {
-      setTimeout(() => {
-        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
-    }
 
     const params = new URLSearchParams({
       loc: location,
@@ -1190,9 +1191,9 @@ export default function App() {
                   <AnimatePresence>
                     {shareOpenBottom && (
                       <motion.div
-                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: -130, scale: 1 }}
-                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         className="absolute bottom-full mb-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden"
                       >
                         <button

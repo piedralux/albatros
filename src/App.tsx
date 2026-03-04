@@ -865,7 +865,7 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-slate-900/30 backdrop-blur-md rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center text-center min-h-[400px]"
+                className="bg-slate-900/30 backdrop-blur-md rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center lg:justify-start lg:pt-40 text-center min-h-[400px]"
               >
                 <RadarLoader sport={sport} />
               </motion.div>
@@ -1230,7 +1230,7 @@ export default function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="bg-slate-900/30 backdrop-blur-md rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center text-center text-slate-500 min-h-[400px]"
+                className="bg-slate-900/30 backdrop-blur-md rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center lg:justify-start lg:pt-40 text-center text-slate-500 min-h-[400px]"
               >
                 <div className="bg-slate-800/50 p-4 rounded-full mb-4 border border-slate-700/50">
                   <Wind size={32} className="text-slate-400" />

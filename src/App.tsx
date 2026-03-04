@@ -179,26 +179,39 @@ const getDirectionRotation = (dir: string) => {
   return map[dir.toUpperCase()] ?? 0;
 };
 
-const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/piedralux/albatros/main/public";
-
 const SPORT_IMAGES: Record<string, string[]> = {
   'Surf': [
-    `${GITHUB_RAW_BASE}/hero/surf-1.jpg`, `${GITHUB_RAW_BASE}/hero/surf-2.jpg`, `${GITHUB_RAW_BASE}/hero/surf-3.jpg`, `${GITHUB_RAW_BASE}/hero/surf-4.jpg`, `${GITHUB_RAW_BASE}/hero/surf-5.jpg`,
-    `${GITHUB_RAW_BASE}/hero/surf-6.jpg`, `${GITHUB_RAW_BASE}/hero/surf-7.jpg`, `${GITHUB_RAW_BASE}/hero/surf-8.jpg`, `${GITHUB_RAW_BASE}/hero/surf-9.jpg`, `${GITHUB_RAW_BASE}/hero/surf-10.jpg`
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578531/surf-2.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578530/surf-3.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578527/surf-5.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578527/surf-4.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578526/surf-7.jpg'
   ],
   'Bodyboard': [
-    `${GITHUB_RAW_BASE}/hero/bodyboard-1.jpg`, `${GITHUB_RAW_BASE}/hero/bodyboard-2.jpg`, `${GITHUB_RAW_BASE}/hero/bodyboard-3.jpg`, `${GITHUB_RAW_BASE}/hero/bodyboard-4.jpg`,
-    `${GITHUB_RAW_BASE}/hero/bodyboard-5.jpg`, `${GITHUB_RAW_BASE}/hero/bodyboard-6.jpg`, `${GITHUB_RAW_BASE}/hero/bodyboard-7.jpg`, `${GITHUB_RAW_BASE}/hero/bodyboard-8.jpg`
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578520/body-3.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578520/body-1.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578521/body-4.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578521/body-5.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578532/body-7.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578521/body-2.jpg'
   ],
   'Kitesurf': [
-    `${GITHUB_RAW_BASE}/hero/kite-1.jpg`, `${GITHUB_RAW_BASE}/hero/kite-2.jpg`, `${GITHUB_RAW_BASE}/hero/kite-3.jpg`, `${GITHUB_RAW_BASE}/hero/kite-4.jpg`, `${GITHUB_RAW_BASE}/hero/kite-5.jpg`
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578531/kite-1.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578531/kite-3.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578531/kite-2.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578535/kite-4.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578535/kite-5.jpg'
   ],
   'Windsurf': [
-    `${GITHUB_RAW_BASE}/hero/wind-1.jpg`, `${GITHUB_RAW_BASE}/hero/wind-2.jpg`, `${GITHUB_RAW_BASE}/hero/wind-3.jpg`, `${GITHUB_RAW_BASE}/hero/wind-4.jpg`, `${GITHUB_RAW_BASE}/hero/wind-5.jpg`
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578535/wind-5.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578536/wind-4.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578537/wind-3.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578539/wind-1.jpg',
+    'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578539/wind-2.jpg'
   ],
   'Wingfoil': [
-    `${GITHUB_RAW_BASE}/hero/wing-1.jpg`,
-    `${GITHUB_RAW_BASE}/hero/wing-2.jpg`
+    'https://images.unsplash.com/photo-1627226025986-e32502c34d3b?auto=format&fit=crop&w=1920&q=80',
+    'https://images.unsplash.com/photo-1682687220742-aba13b6e50ba?auto=format&fit=crop&w=1920&q=80'
   ]
 };
 
@@ -487,7 +500,7 @@ export default function App() {
       {/* Header */}
       <header className="bg-slate-950/80 backdrop-blur-md border-b border-slate-800/50 text-white py-4 px-4 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto flex items-center justify-center">
-          <img src="https://raw.githubusercontent.com/piedralux/albatros/main/public/logo.png" alt="Albatros" className="h-[70px] w-auto" />
+          <img src="https://res.cloudinary.com/dktrerrgh/image/upload/v1772578506/logo_sgdozx.png" alt="Albatros" className="h-[70px] w-auto" />
         </div>
       </header>
 
@@ -496,7 +509,7 @@ export default function App() {
         {/* Content */}
         <div className="max-w-5xl mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 tracking-tight drop-shadow-lg">
-            Radar de points acuáticos.
+            Recomendador de points acuaticos
           </h1>
           <p className="text-slate-200 max-w-2xl mx-auto text-lg md:text-xl leading-relaxed drop-shadow-md font-medium">
             Contanos dónde estás, qué deporte hacés y te tiramos la posta del mejor point para tu metida.

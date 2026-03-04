@@ -35,7 +35,7 @@ const MOCK_RESULT = {
         {
           timeWindow: "Mañana (08:00 a 12:00)",
           spots: [
-            { name: "Playa Grande", description: "Olas consistentes, viento offshore suave.", lat: -38.0267, lng: -57.5316 }
+            { name: "Playa Grande", description: "Olas consistentes, viento offshore suave.", lat: -38.0285, lng: -57.5285 }
           ]
         }
       ],
@@ -52,7 +52,7 @@ const MOCK_RESULT = {
         {
           timeWindow: "Tarde (13:00 a 17:00)",
           spots: [
-            { name: "Waikiki", description: "Reparo del viento sur, ideal para longboard.", lat: -38.0555, lng: -57.5400 }
+            { name: "Waikiki", description: "Reparo del viento sur, ideal para longboard.", lat: -38.0575, lng: -57.5375 }
           ]
         }
       ],
@@ -65,7 +65,7 @@ const SYSTEM_INSTRUCTION = `Rol: Sos Albatros, un asesor experto en deportes de 
 
 Reglas de Análisis (El Protocolo Albatros):
 - Brevedad (CRÍTICO): Para reducir el tiempo de respuesta, mantén las descripciones muy breves (máximo 15 palabras por spot). No generes texto de relleno.
-- Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE SOBRE EL AGUA, A 20 METROS DE LA ORILLA. NUNCA EN LA TIERRA FIRME, NUNCA EN LA CIUDAD, NUNCA EN EL CAMPO. SIEMPRE EN EL AGUA AZUL. Los usuarios se quejan de que los pines caen en el pasto o en la calle. MUY IMPORTANTE: Verifica mentalmente la latitud y longitud. Si la coordenada cae en tierra firme, AJUSTA la coordenada moviéndola hacia el mar (por ejemplo, en la costa atlántica de Buenos Aires, el mar está al Este y Sur, así que suma a la longitud para ir al Este o resta a la latitud para ir al Sur). Sé extremadamente preciso con los decimales (ej: -38.0345, -57.5321).
+- Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE SOBRE EL AGUA, A 50 METROS DE LA ORILLA. NUNCA EN LA TIERRA FIRME, NUNCA EN LA CIUDAD, NUNCA EN EL CAMPO. SIEMPRE EN EL AGUA AZUL. Los usuarios se quejan de que los pines caen en el pasto o en la calle. MUY IMPORTANTE: Verifica mentalmente la latitud y longitud. Si la coordenada cae en tierra firme, AJUSTA la coordenada moviéndola hacia el mar (por ejemplo, en la costa atlántica de Buenos Aires, el mar está al Este y Sur, así que suma a la longitud para ir al Este o resta a la latitud para ir al Sur). Sé extremadamente preciso con los decimales (ej: -38.0345, -57.5321). EL PIN DEBE CAER EN EL MAR, NO EN LA ARENA.
 - Playas Prohibidas (CRÍTICO): NUNCA RECOMIENDES "La Perla" en Mar del Plata para Surf o Bodyboard. Es una playa muy pequeña y con una forma que apacigua mucho la ola. Evita siempre recomendar playas pequeñas, muy cerradas o con rompeolas que anulen el swell para deportes de ola.
 - Resultados por Día: DEBES generar un análisis completo (pronóstico, spots y veredicto) para CADA UNO de los días dentro del rango de fechas solicitado.
 - Tabla de Pronóstico: Genera un pronóstico detallado por franjas horarias para cada día. OBLIGATORIO: Solo debes generar EXACTAMENTE 2 franjas horarias por día:
@@ -311,14 +311,34 @@ export default function App() {
   const [hasAutoSubmitted, setHasAutoSubmitted] = useState(false);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [heroImage, setHeroImage] = useState(HERO_IMAGES[0]);
-  const [shareOpen, setShareOpen] = useState(false);
+  const [shareOpenTop, setShareOpenTop] = useState(false);
+  const [shareOpenBottom, setShareOpenBottom] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
-  const shareRef = useRef<HTMLDivElement>(null);
+  const shareRefTop = useRef<HTMLDivElement>(null);
+  const shareRefBottom = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Audio refs
+  const clickSound = useRef<HTMLAudioElement | null>(null);
+  const successSound = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    clickSound.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3');
+    successSound.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3');
+    if (clickSound.current) clickSound.current.volume = 0.3;
+    if (successSound.current) successSound.current.volume = 0.4;
+  }, []);
+
+  const playClick = () => clickSound.current?.play().catch(() => {});
+  const playSuccess = () => successSound.current?.play().catch(() => {});
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (shareRef.current && !shareRef.current.contains(event.target as Node)) {
-        setShareOpen(false);
+      if (shareRefTop.current && !shareRefTop.current.contains(event.target as Node)) {
+        setShareOpenTop(false);
+      }
+      if (shareRefBottom.current && !shareRefBottom.current.contains(event.target as Node)) {
+        setShareOpenBottom(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -370,10 +390,23 @@ export default function App() {
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (loading) {
+      // Cancel logic
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      setLoading(false);
+      setProgress(0);
+      return;
+    }
+
     if (!location || !startDate || !startTime || !endDate || !endTime) {
       setError('Por favor, completá la ubicación, fechas y horarios.');
       return;
     }
+
+    playClick();
 
     const start = new Date(`${startDate}T${startTime}`);
     const end = new Date(`${endDate}T${endTime}`);
@@ -392,6 +425,9 @@ export default function App() {
     setError('');
     setResult(null);
     setShowCharts(false);
+    
+    // Initialize abort controller
+    abortControllerRef.current = new AbortController();
 
     // Scroll to results on mobile
     if (window.innerWidth < 1024) {
@@ -420,6 +456,7 @@ export default function App() {
       try {
         console.log("Cargando desde caché para ahorrar cuota de API...");
         setResult(JSON.parse(cachedResult));
+        playSuccess();
         setLoading(false);
         return;
       } catch (e) {
@@ -527,18 +564,23 @@ export default function App() {
         },
       });
 
+      if (abortControllerRef.current?.signal.aborted) return;
+
       const jsonStr = response.text || '{}';
       const parsed = JSON.parse(jsonStr);
       
       setResult(parsed);
+      playSuccess();
       
       // Save successful result to cache
       localStorage.setItem(cacheKey, JSON.stringify(parsed));
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       console.error(err);
       if (err.message?.includes('429') || err.message?.includes('RESOURCE_EXHAUSTED')) {
         console.warn("Rate limit hit. Using mock data.");
         setResult(MOCK_RESULT);
+        playSuccess();
         setError('⚠️ Estamos con mucha demanda en el radar. Te mostramos un reporte de demostración mientras liberamos el canal. ¡Probá de nuevo en unos minutos!');
       } else {
         setError(`Hubo un error al consultar a Albatros (${err.message || 'Error desconocido'}). Por favor, intentá de nuevo.`);
@@ -594,13 +636,15 @@ export default function App() {
       {/* Intro Text */}
       <section className="relative z-10 w-full flex items-center justify-center pt-24 pb-16 lg:pt-32 lg:pb-24">
         {/* Content */}
-        <div className="max-w-5xl mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-display text-white mb-6 tracking-wider drop-shadow-lg uppercase">
+        <div className="max-w-5xl mx-auto px-4 text-center flex flex-col items-center">
+          <h1 className="text-4xl md:text-5xl font-display text-white mb-6 tracking-wider drop-shadow-lg uppercase max-w-[90%] md:max-w-none">
             Recomendador de points acuaticos
           </h1>
-          <p className="text-slate-200 max-w-2xl mx-auto text-xl md:text-2xl leading-relaxed drop-shadow-md font-normal">
-            ¡Te tiramos la posta del mejor point para tu metida al mar!
-          </p>
+          <div className="w-full max-w-[90%] md:max-w-[800px]">
+            <p className="text-slate-200 text-xl md:text-2xl leading-relaxed drop-shadow-md font-normal">
+              ¡Te tiramos la posta del mejor point para tu metida al mar!
+            </p>
+          </div>
         </div>
       </section>
 
@@ -779,12 +823,15 @@ export default function App() {
 
             <button
               type="submit"
-              disabled={loading}
-              className="relative w-full bg-cyan-600 hover:bg-cyan-500 text-white font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed shadow-lg shadow-cyan-900/20 overflow-hidden"
+              className={`relative w-full text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg overflow-hidden ${
+                loading 
+                  ? 'bg-red-600 hover:bg-red-500 shadow-red-900/20' 
+                  : 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-900/20'
+              }`}
             >
               {loading && (
                 <div 
-                  className="absolute left-0 top-0 bottom-0 bg-cyan-400/30 transition-all duration-500 ease-out"
+                  className="absolute left-0 top-0 bottom-0 bg-white/20 transition-all duration-500 ease-out"
                   style={{ width: `${progress}%` }}
                 />
               )}
@@ -792,7 +839,7 @@ export default function App() {
                 {loading ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    <span>Analizando... {Math.round(progress)}%</span>
+                    <span>Cancelar búsqueda... {Math.round(progress)}%</span>
                   </>
                 ) : (
                   <>
@@ -873,46 +920,44 @@ export default function App() {
                       {/* Integrated Dashboard (Windguru Style Table) */}
                       {currentDay.forecast && currentDay.forecast.length > 0 && (
                         <div className="bg-slate-950/40 border border-slate-800 rounded-xl overflow-hidden mb-6 shadow-lg">
-                          <div className="p-2.5 border-b border-slate-800/50 bg-slate-900/50 flex justify-between items-center">
-                            <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                              <Activity size={14} className="text-cyan-500" />
+                          <div className="p-3.5 border-b border-slate-800/50 bg-slate-900/50 flex justify-between items-center">
+                            <h3 className="text-sm md:text-base font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                              <Activity size={18} className="text-cyan-500" />
                               Pronóstico Detallado
                             </h3>
                             {result.astronomy && (
-                              <div className="flex items-center gap-3 text-[10px] md:text-xs text-slate-400 font-medium">
-                                <span className="flex items-center gap-1" title="Amanecer"><Sun size={12} className="text-yellow-500"/> {result.astronomy.sunrise}</span>
-                                <span className="flex items-center gap-1" title="Atardecer"><Moon size={12} className="text-indigo-400"/> {result.astronomy.sunset}</span>
+                              <div className="flex items-center gap-4 text-xs md:text-sm text-slate-400 font-medium">
+                                <span className="flex items-center gap-1.5" title="Amanecer"><Sun size={16} className="text-yellow-500"/> {result.astronomy.sunrise}</span>
+                                <span className="flex items-center gap-1.5" title="Atardecer"><Moon size={16} className="text-indigo-400"/> {result.astronomy.sunset}</span>
                               </div>
                             )}
                           </div>
                           
                           <div className="overflow-x-auto">
-                            <table className="w-full text-[13px] md:text-[14px] text-left whitespace-nowrap font-sans tracking-tight border-collapse">
+                            <table className="w-full text-[15px] md:text-[16px] text-left whitespace-nowrap font-sans tracking-tight border-collapse">
                               <thead>
                                 <tr className="bg-slate-900/30 border-b border-slate-800/50">
-                                  <th className="px-3 py-3 font-medium text-slate-400 sticky left-0 bg-slate-900/90 z-10 border-r border-slate-800/50 w-24">Hora</th>
+                                  <th className="px-3 py-4 font-medium text-slate-400 sticky left-0 bg-slate-900/90 z-10 border-r border-slate-800/50 w-24">Hora</th>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <th key={i} className={`px-2 py-3 font-medium text-slate-200 text-center border-r border-slate-800/20 last:border-r-0`}>{f.time}</th>
+                                    <th key={i} className={`px-2 py-4 font-medium text-slate-200 text-center border-r border-slate-800/20 last:border-r-0`}>{f.time}</th>
                                   ))}
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-800/50">
                                 {/* Viento */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-3 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
+                                  <td className="px-3 py-4 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
                                     <div className="flex items-center gap-1.5 h-full">
-                                      <Wind size={14} className="text-teal-400" /> Viento
+                                      <Wind size={16} className="text-teal-400" /> Viento
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-2 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
-                                      <div className="flex flex-col items-center justify-center gap-1">
-                                        <div className={`inline-flex items-center justify-center w-12 h-7 rounded font-medium ${getWindColor(f.windSpeed)}`}>
-                                          {f.windSpeed}
-                                        </div>
-                                        <div className="flex items-center gap-1 text-slate-300 font-medium justify-center text-[10px]">
-                                          <ArrowDown size={10} style={{ transform: `rotate(${getDirectionRotation(f.windDirection)}deg)` }} />
-                                          <span>{f.windDirection}</span>
+                                    <td key={i} className={`px-1 py-3 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                      <div className="flex flex-col items-center justify-center">
+                                        <div className={`inline-flex items-center justify-center gap-1.5 px-2 h-9 rounded-lg font-bold w-[88px] shrink-0 ${getWindColor(f.windSpeed)}`}>
+                                          <span>{f.windSpeed}</span>
+                                          <ArrowDown size={14} style={{ transform: `rotate(${getDirectionRotation(f.windDirection)}deg)` }} />
+                                          <span className="text-[10px] opacity-80">{f.windDirection}</span>
                                         </div>
                                       </div>
                                     </td>
@@ -920,25 +965,21 @@ export default function App() {
                                 </tr>
                                 {/* Olas */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-3 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
+                                  <td className="px-3 py-4 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
                                     <div className="flex items-center gap-1.5 h-full">
-                                      <Waves size={14} className="text-blue-400" /> Olas
+                                      <Waves size={16} className="text-blue-400" /> Olas
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-2 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
-                                      <div className="flex flex-col items-center justify-center gap-1">
-                                        <div className={`inline-flex items-center justify-center w-12 h-7 rounded font-medium ${getWaveColor(f.waveHeight)}`}>
-                                          {f.waveHeight}
-                                        </div>
-                                        <div className="flex items-center gap-1 text-slate-300 font-medium justify-center text-[10px]">
-                                          {f.waveDirection && f.waveDirection !== '-' ? (
+                                    <td key={i} className={`px-1 py-3 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                      <div className="flex flex-col items-center justify-center">
+                                        <div className={`inline-flex items-center justify-center gap-1.5 px-2 h-9 rounded-lg font-bold w-[88px] shrink-0 ${getWaveColor(f.waveHeight)}`}>
+                                          <span>{f.waveHeight}</span>
+                                          {f.waveDirection && f.waveDirection !== '-' && (
                                             <>
-                                              <ArrowDown size={10} style={{ transform: `rotate(${getDirectionRotation(f.waveDirection)}deg)` }} />
-                                              <span>{f.waveDirection}</span>
+                                              <ArrowDown size={14} style={{ transform: `rotate(${getDirectionRotation(f.waveDirection)}deg)` }} />
+                                              <span className="text-[10px] opacity-80">{f.waveDirection}</span>
                                             </>
-                                          ) : (
-                                            <span className="opacity-50">-</span>
                                           )}
                                         </div>
                                       </div>
@@ -947,15 +988,15 @@ export default function App() {
                                 </tr>
                                 {/* Período */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-3 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
+                                  <td className="px-3 py-4 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
                                     <div className="flex items-center gap-1.5 h-full">
-                                      <Activity size={14} className="text-indigo-400" /> Período
+                                      <Activity size={16} className="text-indigo-400" /> Período
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-2 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                    <td key={i} className={`px-1 py-3 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
                                       <div className="flex items-center justify-center">
-                                        <div className={`inline-flex items-center justify-center w-12 h-7 rounded font-medium ${getPeriodColor(f.wavePeriod)}`}>
+                                        <div className={`inline-flex items-center justify-center px-2 h-9 rounded-lg font-bold w-[88px] shrink-0 ${getPeriodColor(f.wavePeriod)}`}>
                                           {f.wavePeriod}s
                                         </div>
                                       </div>
@@ -964,15 +1005,15 @@ export default function App() {
                                 </tr>
                                 {/* Nubosidad */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-3 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
+                                  <td className="px-3 py-4 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
                                     <div className="flex items-center gap-1.5 h-full">
-                                      <Cloud size={14} className="text-slate-400" /> Nubes
+                                      <Cloud size={16} className="text-slate-400" /> Nubes
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-2 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                    <td key={i} className={`px-1 py-3 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
                                       <div className="flex items-center justify-center">
-                                        <div className={`inline-flex items-center justify-center w-12 h-7 rounded font-medium ${getCloudCoverColor(f.cloudCover)}`}>
+                                        <div className={`inline-flex items-center justify-center px-2 h-9 rounded-lg font-bold w-[88px] shrink-0 ${getCloudCoverColor(f.cloudCover)}`}>
                                           {f.cloudCover}%
                                         </div>
                                       </div>
@@ -981,15 +1022,15 @@ export default function App() {
                                 </tr>
                                 {/* Clima */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-3 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
+                                  <td className="px-3 py-4 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
                                     <div className="flex items-center gap-1.5 h-full">
-                                      <Thermometer size={14} className="text-orange-400" /> Temp.
+                                      <Thermometer size={16} className="text-orange-400" /> Temp.
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-2 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                    <td key={i} className={`px-1 py-3 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
                                       <div className="flex items-center justify-center">
-                                        <div className="inline-flex items-center justify-center w-12 h-7 rounded font-medium bg-orange-500/20 text-orange-300">
+                                        <div className="inline-flex items-center justify-center px-2 h-9 rounded-lg font-bold w-[88px] shrink-0 bg-orange-500/20 text-orange-300">
                                           {f.temperature}°
                                         </div>
                                       </div>
@@ -1003,8 +1044,8 @@ export default function App() {
                       )}
 
                       {/* Disclaimer */}
-                      <div className="mb-6 p-3 bg-slate-800/30 border border-slate-700/50 rounded-lg flex items-start gap-2 text-xs text-slate-400">
-                        <AlertCircle size={14} className="text-yellow-500/70 shrink-0 mt-0.5" />
+                      <div className="mb-6 p-4 bg-slate-800/30 border border-slate-700/50 rounded-lg flex items-start gap-3 text-sm md:text-base text-slate-400 leading-relaxed">
+                        <AlertCircle size={18} className="text-yellow-500/70 shrink-0 mt-0.5" />
                         <p>
                           <strong className="text-slate-300">Aviso:</strong> Las condiciones meteorológicas son dinámicas y pueden variar. 
                           Te sugerimos volver a consultar a Albatros unas horas antes de tu sesión para obtener el pronóstico más actualizado.
@@ -1012,18 +1053,18 @@ export default function App() {
                       </div>
 
                       {/* Share Dropdown */}
-                      <div className="relative mb-8 flex justify-center md:justify-start" ref={shareRef}>
+                      <div className="relative mb-8 flex justify-center md:justify-start" ref={shareRefTop}>
                         <button
-                          onClick={() => setShareOpen(!shareOpen)}
-                          className="flex items-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-cyan-900/20"
+                          onClick={() => setShareOpenTop(!shareOpenTop)}
+                          className="flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium transition-all border border-slate-700 shadow-lg"
                         >
                           <Share2 size={18} />
                           Compartir informe
-                          <ChevronDown size={16} className={`transition-transform duration-200 ${shareOpen ? 'rotate-180' : ''}`} />
+                          <ChevronDown size={16} className={`transition-transform duration-200 ${shareOpenTop ? 'rotate-180' : ''}`} />
                         </button>
 
                         <AnimatePresence>
-                          {shareOpen && (
+                          {shareOpenTop && (
                             <motion.div
                               initial={{ opacity: 0, y: 10, scale: 0.95 }}
                               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1033,7 +1074,7 @@ export default function App() {
                               <button
                                 onClick={() => {
                                   handleShare();
-                                  setShareOpen(false);
+                                  setShareOpenTop(false);
                                 }}
                                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800 transition-colors text-slate-200 text-sm"
                               >
@@ -1044,7 +1085,7 @@ export default function App() {
                                 href={`https://api.whatsapp.com/send?text=${encodeURIComponent('¡Mirá el reporte de Albatros para mi próxima sesión! 🌊🏄‍♂️\n\n' + window.location.href)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                onClick={() => setShareOpen(false)}
+                                onClick={() => setShareOpenTop(false)}
                                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800 transition-colors text-slate-200 text-sm border-t border-slate-800/50"
                               >
                                 <Share2 size={18} className="text-[#25D366]" />
@@ -1062,22 +1103,22 @@ export default function App() {
                             <Waves size={24} />
                             Los points
                           </h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-6">
                             {currentDay.bestSpots?.map((window: any, i: number) => (
                               <div key={i} className="bg-slate-950/50 rounded-xl p-5 border border-slate-800/50">
-                                <h4 className="font-bold text-slate-200 mb-4 text-md border-b border-slate-800 pb-2 flex items-center gap-2">
-                                  <Calendar size={16} className="text-cyan-500" />
+                                <h4 className="font-bold text-slate-200 mb-4 text-lg border-b border-slate-800 pb-2 flex items-center gap-2">
+                                  <Calendar size={18} className="text-cyan-500" />
                                   {window.timeWindow}
                                 </h4>
-                                <div className="space-y-4">
+                                <div className="space-y-5">
                                   {window.spots?.map((spot: any, j: number) => (
-                                    <div key={j} className="flex gap-3">
-                                      <div className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] mt-0.5">
+                                    <div key={j} className="flex gap-4">
+                                      <div className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold rounded-full w-6 h-6 flex items-center justify-center shrink-0 text-sm mt-0.5">
                                         {j + 1}
                                       </div>
                                       <div>
-                                        <h5 className="font-semibold text-slate-200 text-sm">{spot.name}</h5>
-                                        <p className="text-slate-400 text-xs mt-1 leading-relaxed">{spot.description}</p>
+                                        <h5 className="font-semibold text-slate-200 text-base">{spot.name}</h5>
+                                        <p className="text-slate-400 text-sm mt-1 leading-relaxed">{spot.description}</p>
                                       </div>
                                     </div>
                                   ))}
@@ -1108,21 +1149,22 @@ export default function App() {
                       {currentSpots.length > 0 && (
                         <div className="h-64 md:h-80 w-full rounded-xl overflow-hidden border border-slate-800 shadow-inner z-0 relative mb-8">
                           <MapContainer
-                            key={`${currentSpots[0].lat}-${currentSpots[0].lng}`}
+                            key={`map-${selectedDayIndex}-${currentSpots[0].lat}-${currentSpots[0].lng}`}
                             center={[currentSpots[0].lat, currentSpots[0].lng]}
-                            zoom={11}
+                            zoom={12}
+                            scrollWheelZoom={false}
                             style={{ height: '100%', width: '100%', zIndex: 0 }}
                           >
                             <TileLayer
-                              attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                              attribution='&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
                               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                             />
                             {currentSpots.map((spot: any, index: number) => (
-                              <Marker key={index} position={[spot.lat, spot.lng]}>
+                              <Marker key={`${index}-${spot.lat}-${spot.lng}`} position={[spot.lat, spot.lng]}>
                                 <Popup>
-                                  <div className="font-sans">
-                                    <h3 className="font-bold text-cyan-700 text-sm mb-1">{spot.name}</h3>
-                                    <p className="text-xs text-slate-600 m-0 leading-tight">{spot.description}</p>
+                                  <div className="font-sans p-1">
+                                    <h3 className="font-bold text-cyan-600 text-sm mb-1">{spot.name}</h3>
+                                    <p className="text-xs text-slate-700 m-0 leading-tight">{spot.description}</p>
                                   </div>
                                 </Popup>
                               </Marker>
@@ -1135,15 +1177,47 @@ export default function App() {
                 })()}
 
                 {/* Share Buttons (Bottom) */}
-                <div className="relative flex justify-center md:justify-start mb-8">
+                <div className="relative flex justify-center md:justify-start mb-8" ref={shareRefBottom}>
                   <button
-                    onClick={() => setShareOpen(!shareOpen)}
-                    className="flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium transition-all border border-slate-700"
+                    onClick={() => setShareOpenBottom(!shareOpenBottom)}
+                    className="flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium transition-all border border-slate-700 shadow-lg"
                   >
                     <Share2 size={18} />
                     Compartir informe
-                    <ChevronDown size={16} className={`transition-transform duration-200 ${shareOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown size={16} className={`transition-transform duration-200 ${shareOpenBottom ? 'rotate-180' : ''}`} />
                   </button>
+
+                  <AnimatePresence>
+                    {shareOpenBottom && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: -130, scale: 1 }}
+                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                        className="absolute bottom-full mb-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden"
+                      >
+                        <button
+                          onClick={() => {
+                            handleShare();
+                            setShareOpenBottom(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800 transition-colors text-slate-200 text-sm"
+                        >
+                          {copied ? <Check size={18} className="text-emerald-400" /> : <Copy size={18} className="text-cyan-400" />}
+                          <span>{copied ? '¡Copiado!' : 'Copiar Link'}</span>
+                        </button>
+                        <a
+                          href={`https://api.whatsapp.com/send?text=${encodeURIComponent('¡Mirá el reporte de Albatros para mi próxima sesión! 🌊🏄‍♂️\n\n' + window.location.href)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setShareOpenBottom(false)}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800 transition-colors text-slate-200 text-sm border-t border-slate-800/50"
+                        >
+                          <Share2 size={18} className="text-[#25D366]" />
+                          <span>WhatsApp</span>
+                        </a>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {/* Ad Slot Bottom */}

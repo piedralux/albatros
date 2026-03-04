@@ -578,8 +578,8 @@ export default function App() {
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       console.error(err);
-      if (err.message?.includes('429') || err.message?.includes('RESOURCE_EXHAUSTED')) {
-        console.warn("Rate limit hit. Using mock data.");
+      if (err.message?.includes('429') || err.message?.includes('RESOURCE_EXHAUSTED') || err.message?.includes('503') || err.message?.includes('UNAVAILABLE')) {
+        console.warn("Rate limit or service unavailable hit. Using mock data.");
         setResult(MOCK_RESULT);
         playSuccess();
         setError('⚠️ Estamos con mucha demanda en el radar. Te mostramos un reporte de demostración mientras liberamos el canal. ¡Probá de nuevo en unos minutos!');

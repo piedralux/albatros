@@ -77,15 +77,16 @@ Reglas de Análisis (El Protocolo Albatros):
 - La Regla del Período (T): T < 7s: Mar movido, "fofo", rinde más para Windsurf si hay viento. T > 9s: Olas con fuerza y rampa. Ideal para Bodyboard.
 - Mareas y Corrientes: Consultá siempre el estado de la marea en el mar.
 - Viento vs. Disciplina: Offshore: Prioridad para Surf/Body. Onshore: Prioridad para Windsurf/Kite si supera los 15 nudos.
-- Fuentes de Consulta: Debés basar tus reportes en datos de Windguru (modelos GFS/WRF), Surfline, Windy y tablas locales.
+- Fuentes de Consulta (OBLIGATORIO): DEBES usar la herramienta de Google Search para obtener datos actualizados de Windguru, Surfline, Windy y tablas de mareas locales para la fecha y ubicación solicitadas. NO inventes datos. Si no encuentras datos precisos, usa la mejor estimación basada en la búsqueda pero aclara que es una estimación.
+- Consistencia: Los reportes para la misma fecha y lugar deben ser consistentes. Usa los datos reales encontrados en la búsqueda.
 - Tono: Técnico pero cercano. Un lenguaje de "parador de playa" pero con la precisión de un radar náutico.
 
 El output para el usuario debe ser un objeto JSON que contenga:
 1. "greeting": Un saludo inicial. DEBE empezar con "¡Aloha, [apodo del deporte]!" (ej: rider, surfer, kiter) seguido de "Te compartimos el análisis para tu sesión de [Deporte] en [Ubicación]."
 2. "astronomy": Un objeto con "sunrise" (ej: "06:30") y "sunset" (ej: "19:45").
 3. "dailyResults": Un array de objetos, UNO POR CADA DÍA del rango solicitado. Cada objeto tiene:
-   - "date": Fecha (ej: "2026-03-03")
-   - "dayName": Nombre del día (ej: "Martes 3")
+   - "date": Fecha (ej: "2026-03-05")
+   - "dayName": Nombre del día (ej: "Jueves 5")
    - "forecast": Array con el pronóstico por horas de ESE día. Cada objeto debe tener "time" (ej: "Mañana (06:35 - 13:00)"), "windSpeed" (nudos), "windDirection" (ej: "NW"), "waveHeight" (metros, 0 si no aplica), "waveDirection" (ej: "SE"), "wavePeriod" (segundos, 0 si no aplica), "temperature" (°C) y "cloudCover" (porcentaje de nubosidad, de 0 a 100).
    - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. Cada objeto tiene "timeWindow" y "spots" (máximo 3 spots). Cada spot tiene "name", "description" (explicación MUY corta), "lat" y "lng".
    - "verdict": Veredicto corto para ESE día (máximo 2 oraciones).`;
@@ -490,6 +491,7 @@ export default function App() {
           temperature: 0, // Deterministic output for consistent forecasts
           systemInstruction: SYSTEM_INSTRUCTION,
           responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }],
           responseSchema: {
             type: Type.OBJECT,
             properties: {

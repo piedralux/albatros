@@ -104,6 +104,56 @@ El output para el usuario debe ser un objeto JSON que contenga:
    - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. Cada objeto tiene "timeWindow" y "spots" (máximo 3 spots). Cada spot tiene "name", "description" (explicación MUY corta), "lat" y "lng".
    - "verdict": Veredicto corto para ESE día (máximo 2 oraciones).`;
 
+const CostEstimator = ({ stats, hasCustomKey }: { stats: { prompt: number, candidates: number, total: number } | null, hasCustomKey: boolean }) => {
+  if (!stats) return null;
+
+  // Pricing (approximate for Gemini 1.5 Flash)
+  // Input: $0.075 / 1M tokens
+  // Output: $0.30 / 1M tokens
+  // Search Grounding: $0.035 per request
+  const inputCost = (stats.prompt / 1000000) * 0.075;
+  const outputCost = (stats.candidates / 1000000) * 0.30;
+  const searchCost = 0.035; // Fixed cost per grounding request
+  const totalCost = inputCost + outputCost + searchCost;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mt-4 p-3 bg-slate-950/50 border border-slate-800 rounded-xl flex flex-col gap-2"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <BarChart2 size={14} className="text-cyan-500" />
+          <span>Monitor de Consumo (Estimado)</span>
+        </div>
+        <div className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">
+          {hasCustomKey ? 'PAGO POR USO' : 'NIVEL GRATUITO'}
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-slate-900/50 p-2 rounded-lg border border-slate-800/50">
+          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Tokens</p>
+          <p className="text-sm font-mono text-slate-200">{stats.total.toLocaleString()}</p>
+        </div>
+        <div className="bg-slate-900/50 p-2 rounded-lg border border-slate-800/50">
+          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Búsqueda</p>
+          <p className="text-sm font-mono text-slate-200">$0.035</p>
+        </div>
+        <div className="bg-slate-900/50 p-2 rounded-lg border border-slate-800/50">
+          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Costo Total</p>
+          <p className="text-sm font-mono text-emerald-400 font-bold">${totalCost.toFixed(4)}</p>
+        </div>
+      </div>
+      
+      <p className="text-[9px] text-slate-600 italic">
+        * Los costos son aproximados en USD. La mayoría de las veces, si estás en el "Free Tier", Google no te cobrará nada hasta superar un volumen muy alto.
+      </p>
+    </motion.div>
+  );
+};
+
 const AdSlot = ({ className = '' }: { className?: string }) => (
   <div className={`bg-slate-900/30 backdrop-blur-md border border-slate-800 border-dashed flex flex-col items-center justify-center text-slate-500 text-sm p-4 rounded-xl ${className}`}>
     <span className="font-medium text-slate-600 mb-1">Espacio Publicitario</span>
@@ -336,6 +386,7 @@ export default function App() {
   const [shareOpenTop, setShareOpenTop] = useState(false);
   const [shareOpenBottom, setShareOpenBottom] = useState(false);
   const [hasCustomKey, setHasCustomKey] = useState(false);
+  const [usageStats, setUsageStats] = useState<{ prompt: number, candidates: number, total: number } | null>(null);
 
   // Check for custom API key on mount
   useEffect(() => {
@@ -350,11 +401,22 @@ export default function App() {
 
   const handleOpenKeySelector = async () => {
     if (window.aistudio?.openSelectKey) {
-      await window.aistudio.openSelectKey();
-      // Assume success and refresh state
-      const hasKey = await window.aistudio.hasSelectedApiKey();
-      setHasCustomKey(hasKey);
-      setError(null);
+      try {
+        await window.aistudio.openSelectKey();
+        // Assume success and refresh state
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setHasCustomKey(hasKey);
+        setError(null);
+        // Trigger a new search automatically if they just linked a key
+        if (hasKey) {
+          handleSubmit();
+        }
+      } catch (err) {
+        console.error("Error al abrir el selector de llaves:", err);
+        alert("No se pudo abrir el selector de llaves. Por favor, intentá de nuevo o revisá la configuración de tu navegador.");
+      }
+    } else {
+      alert("El selector de llaves no está disponible en este entorno. Si estás usando un bloqueador de anuncios o una ventana de incógnito, intentá desactivarlos.");
     }
   };
 
@@ -638,6 +700,15 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
       const jsonStr = response.text || '{}';
       const parsed = JSON.parse(jsonStr);
       
+      // Capture usage statistics
+      if (response.usageMetadata) {
+        setUsageStats({
+          prompt: response.usageMetadata.promptTokenCount || 0,
+          candidates: response.usageMetadata.candidatesTokenCount || 0,
+          total: response.usageMetadata.totalTokenCount || 0
+        });
+      }
+      
       setResult(parsed);
       playSuccess();
       
@@ -657,15 +728,28 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
         if (!hasCustomKey) {
           setError(
             <div className="flex flex-col gap-3">
-              <p>⚠️ El radar gratuito está saturado por la alta demanda.</p>
-              <p className="text-xs opacity-80">Para hacer consultas ilimitadas y sin esperas, vinculá tu propia API Key de Google Cloud.</p>
-              <button 
-                onClick={handleOpenKeySelector}
-                className="bg-cyan-500 hover:bg-cyan-400 text-slate-900 px-4 py-2 rounded-lg font-bold text-xs transition-colors self-start"
-              >
-                VINCULAR MI API KEY (RECOMENDADO)
-              </button>
-              <p className="text-[10px] opacity-60 italic">Requiere proyecto en Google Cloud con facturación activa (es gratis hasta un volumen muy alto).</p>
+              <p className="font-bold">⚠️ El radar gratuito está saturado.</p>
+              <p className="text-xs opacity-80">
+                Para usar Albatros sin límites, necesitás vincular tu propia API Key. 
+                <span className="block mt-1 text-cyan-400 font-medium">Importante: Google requiere que tu proyecto tenga la facturación activa (aunque el uso de Gemini suele entrar en el plan gratuito).</span>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button 
+                  onClick={handleOpenKeySelector}
+                  className="bg-cyan-500 hover:bg-cyan-400 text-slate-900 px-4 py-2 rounded-lg font-bold text-xs transition-colors"
+                >
+                  VINCULAR MI API KEY
+                </button>
+                <a 
+                  href="https://ai.google.dev/gemini-api/docs/billing" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg font-bold text-xs transition-colors flex items-center gap-1"
+                >
+                  INFO FACTURACIÓN
+                </a>
+              </div>
+              <p className="text-[10px] opacity-60 italic">Si ya vinculaste una llave y sigue fallando, asegurate de que el proyecto en Google Cloud tenga una tarjeta vinculada.</p>
             </div>
           );
         } else {
@@ -969,6 +1053,9 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
 
           {/* Ad Slot Sidebar */}
           <AdSlot className="flex-1 min-h-[200px] w-full mt-4" />
+          
+          {/* Cost Estimator */}
+          <CostEstimator stats={usageStats} hasCustomKey={hasCustomKey} />
         </section>
 
         {/* Results Section */}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
-import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud, CloudRain, Droplet, ArrowRight, Sun, Moon, AlertCircle, ArrowDown } from 'lucide-react';
+import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud, CloudRain, Droplet, ArrowRight, Sun, Moon, AlertCircle, ArrowDown, Shirt, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -104,7 +104,7 @@ El output para el usuario debe ser un objeto JSON que contenga:
    - "waterTemp": Temperatura del agua estimada (ej: 19)
    - "wetsuit": Recomendación de traje (ej: "3/2mm")
    - "forecast": Array con el pronóstico por horas de ESE día. Cada objeto debe tener "time" (ej: "Mañana (06:35 - 13:00)"), "windSpeed" (nudos), "windDirection" (ej: "NW"), "waveHeight" (metros, 0 si no aplica), "waveDirection" (ej: "SE"), "wavePeriod" (segundos, 0 si no aplica), "temperature" (°C) y "cloudCover" (porcentaje de nubosidad, de 0 a 100).
-   - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. Cada objeto tiene "timeWindow" y "spots" (máximo 3 spots). Cada spot tiene "name", "description" (explicación MUY corta), "lat" y "lng".
+   - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. Cada objeto tiene "timeWindow" y "spots" (máximo 3 spots). Cada spot tiene "name", "description" (explicación MUY corta), "lat", "lng" y "score" (un número del 1 al 10 que representa la calidad del spot para ese momento).
    - "verdict": Veredicto experto y decidido.`;
 
 const CostEstimator = ({ stats, hasCustomKey }: { stats: { prompt: number, candidates: number, total: number } | null, hasCustomKey: boolean }) => {
@@ -173,42 +173,42 @@ const RadarLoader = ({ sport = 'Surf' }: { sport?: string }) => {
       'Buscando la serie perfecta...',
       'Chequeando el período de las olas...',
       'Viendo dónde rompe mejor...',
-      'Consultando Windguru y Surfline...'
+      'Buscando datos de condiciones...'
     ],
     'Bodyboard': [
       'Buscando rampas...',
       'Analizando el rebote en las escolleras...',
       'Chequeando la fuerza del labio...',
       'Escaneando tubos...',
-      'Consultando Windguru y Surfline...'
+      'Buscando datos de condiciones...'
     ],
     'Windsurf': [
       'Midiendo rachas...',
       'Buscando viento constante...',
       'Analizando el planeo...',
       'Chequeando la dirección del viento...',
-      'Consultando Windguru y Surfline...'
+      'Buscando datos de condiciones...'
     ],
     'Kitesurf': [
       'Escaneando la ventana de viento...',
       'Buscando el mejor lanzamiento...',
       'Analizando la densidad del aire...',
       'Chequeando condiciones para saltar...',
-      'Consultando Windguru y Surfline...'
+      'Buscando datos de condiciones...'
     ],
     'SUP': [
       'Buscando aguas tranquilas...',
       'Analizando la deriva...',
       'Chequeando el viento de costa...',
       'Escaneando el horizonte...',
-      'Consultando Windguru y Surfline...'
+      'Buscando datos de condiciones...'
     ],
     'Wingfoil': [
       'Analizando el despegue...',
       'Buscando el mejor foil track...',
       'Midiendo la presión del viento...',
       'Chequeando el choppy...',
-      'Consultando Windguru y Surfline...'
+      'Buscando datos de condiciones...'
     ]
   };
 
@@ -480,11 +480,13 @@ export default function App() {
       setProgress(0);
       interval = setInterval(() => {
         setProgress((prev) => {
-          if (prev >= 95) return 95;
-          const increment = Math.random() * 8;
-          return Math.min(95, prev + increment);
+          if (prev >= 98) return 98;
+          // Slow down as it gets closer to 100
+          const remaining = 100 - prev;
+          const increment = (Math.random() * remaining) / 10;
+          return Math.min(98, prev + increment);
         });
-      }, 800);
+      }, 500);
     } else {
       setProgress(100);
       const timeout = setTimeout(() => setProgress(0), 500);
@@ -590,6 +592,16 @@ export default function App() {
     setIsFromCache(false);
     setCacheTimestamp(null);
 
+    // Safety timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (loading && abortControllerRef.current) {
+        console.warn("Búsqueda cancelada por exceso de tiempo (timeout)");
+        abortControllerRef.current.abort();
+        setError("La búsqueda está demorando más de lo habitual. Por favor, intentá de nuevo o simplificá el rango de fechas.");
+        setLoading(false);
+      }
+    }, 60000); // 60 seconds safety timeout
+
     const prompt = `
 📍 Ubicación: ${location}
 📅 RANGO SOLICITADO:
@@ -681,8 +693,9 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                                 description: { type: Type.STRING, description: "Máximo 15 palabras." },
                                 lat: { type: Type.NUMBER },
                                 lng: { type: Type.NUMBER },
+                                score: { type: Type.NUMBER, description: "Puntaje del 1 al 10." },
                               },
-                              required: ["name", "description", "lat", "lng"]
+                              required: ["name", "description", "lat", "lng", "score"]
                             }
                           }
                         },
@@ -764,6 +777,7 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
         setError(`Hubo un error al consultar a Albatros (${err.message || 'Error desconocido'}). Por favor, intentá de nuevo.`);
       }
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -1173,7 +1187,7 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                                 <span>Agua: <span className="text-blue-300 font-bold">{currentDay.waterTemp}°C</span></span>
                               </div>
                               <div className="flex items-center gap-2 text-sm text-slate-300">
-                                <Waves size={16} className="text-cyan-400" />
+                                <Shirt size={16} className="text-cyan-400" />
                                 <span>Traje: <span className="text-cyan-300 font-bold">{currentDay.wetsuit}</span></span>
                               </div>
                             </div>
@@ -1188,22 +1202,30 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                             <MapPin size={20} className="text-cyan-500" />
                             Los points recomendados
                           </h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 gap-6">
                             {currentDay.bestSpots?.map((window: any, i: number) => (
-                              <div key={i} className="bg-slate-950/30 rounded-xl p-4 border border-slate-800/50">
-                                <h4 className="font-bold text-slate-300 mb-3 text-sm uppercase tracking-wider flex items-center gap-2">
-                                  <Calendar size={14} className="text-cyan-500" />
+                              <div key={i} className="bg-slate-950/30 rounded-xl p-6 border border-slate-800/50">
+                                <h4 className="font-bold text-slate-200 mb-4 text-base uppercase tracking-wider flex items-center gap-2">
+                                  <Calendar size={18} className="text-cyan-500" />
                                   {window.timeWindow}
                                 </h4>
-                                <div className="space-y-3">
+                                <div className="space-y-5">
                                   {window.spots?.map((spot: any, j: number) => (
-                                    <div key={j} className="flex gap-3">
-                                      <div className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] mt-0.5">
+                                    <div key={j} className="flex gap-4 items-start">
+                                      <div className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold rounded-full w-7 h-7 flex items-center justify-center shrink-0 text-xs mt-0.5">
                                         {j + 1}
                                       </div>
-                                      <div>
-                                        <h5 className="font-semibold text-slate-200 text-sm">{spot.name}</h5>
-                                        <p className="text-slate-400 text-xs mt-0.5 leading-tight">{spot.description}</p>
+                                      <div className="flex-1">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <h5 className="font-bold text-slate-100 text-lg">{spot.name}</h5>
+                                          {spot.score && (
+                                            <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold">
+                                              <Star size={12} className="fill-emerald-400" />
+                                              <span>{spot.score}/10</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                        <p className="text-slate-300 text-sm mt-1 leading-relaxed">{spot.description}</p>
                                       </div>
                                     </div>
                                   ))}
@@ -1215,95 +1237,68 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                       </div>
 
                       {/* Map */}
-                      {currentSpots.length > 0 && (
-                        <div className="h-48 md:h-64 w-full rounded-xl overflow-hidden border border-slate-800 shadow-inner z-0 relative mb-6">
-                          <MapContainer
-                            key={`map-${selectedDayIndex}-${currentSpots[0].lat}-${currentSpots[0].lng}`}
-                            center={[currentSpots[0].lat, currentSpots[0].lng]}
-                            zoom={12}
-                            scrollWheelZoom={false}
-                            style={{ height: '100%', width: '100%', zIndex: 0 }}
-                          >
-                            <TileLayer
-                              attribution='&copy; Esri'
-                              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                            />
-                            {currentSpots.map((spot: any, index: number) => (
-                              <Marker key={`${index}-${spot.lat}-${spot.lng}`} position={[spot.lat, spot.lng]}>
-                                <Popup>
-                                  <div className="font-sans p-1">
-                                    <h3 className="font-bold text-cyan-600 text-sm mb-1">{spot.name}</h3>
-                                    <p className="text-xs text-slate-700 m-0 leading-tight">{spot.description}</p>
-                                  </div>
-                                </Popup>
-                              </Marker>
-                            ))}
-                          </MapContainer>
-                        </div>
-                      )}
-
                       {/* Integrated Dashboard (Windguru Style Table) */}
                       {currentDay.forecast && currentDay.forecast.length > 0 && (
                         <div className="bg-slate-950/40 border border-slate-800 rounded-xl overflow-hidden mb-6 shadow-lg">
-                          <div className="p-2.5 border-b border-slate-800/50 bg-slate-900/30 flex justify-between items-center">
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                              <Activity size={14} className="text-cyan-500" />
+                          <div className="p-3 border-b border-slate-700 bg-slate-900/40 flex justify-between items-center">
+                            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest flex items-center gap-1.5">
+                              <Activity size={16} className="text-cyan-500" />
                               Estado de las cosas
                             </h3>
                             {result.astronomy && (
-                              <div className="flex items-center gap-3 text-[10px] text-slate-500 font-bold uppercase tracking-tighter">
-                                <span className="flex items-center gap-1" title="Amanecer"><Sun size={12} className="text-yellow-600"/> {result.astronomy.sunrise}</span>
-                                <span className="flex items-center gap-1" title="Atardecer"><Moon size={12} className="text-indigo-500"/> {result.astronomy.sunset}</span>
+                              <div className="flex items-center gap-4 text-xs text-slate-400 font-bold uppercase tracking-tighter">
+                                <span className="flex items-center gap-1.5" title="Amanecer"><Sun size={14} className="text-yellow-600"/> {result.astronomy.sunrise}</span>
+                                <span className="flex items-center gap-1.5" title="Atardecer"><Moon size={14} className="text-indigo-500"/> {result.astronomy.sunset}</span>
                               </div>
                             )}
                           </div>
                           
                           <div className="overflow-x-auto">
-                            <table className="w-full text-xs text-left whitespace-nowrap font-sans tracking-tight border-collapse">
+                            <table className="w-full text-sm text-left whitespace-nowrap font-sans tracking-tight border-collapse">
                               <thead>
-                                <tr className="bg-slate-900/30 border-b border-slate-800/50">
-                                  <th className="px-2 py-2 font-bold text-slate-500 sticky left-0 bg-slate-900/95 z-10 border-r border-slate-800/50 w-20 uppercase text-[9px] tracking-widest">Hora</th>
+                                <tr className="bg-slate-900/40 border-b border-slate-700">
+                                  <th className="px-3 py-3 font-bold text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-700 w-24 uppercase text-[10px] tracking-widest">Hora</th>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <th key={i} className={`px-1 py-2 font-bold text-slate-300 text-center border-r border-slate-800/20 last:border-r-0 text-[10px]`}>{f.time}</th>
+                                    <th key={i} className={`px-2 py-3 font-bold text-slate-200 text-center border-r border-slate-700 last:border-r-0 text-xs`}>{f.time}</th>
                                   ))}
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-slate-800/30">
+                              <tbody className="divide-y divide-slate-700">
                                 {/* Viento */}
-                                <tr className="hover:bg-slate-900/20">
-                                  <td className="px-2 py-2 font-medium text-slate-500 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-20 text-[10px]">
-                                    <div className="flex items-center gap-1.5 h-full">
-                                      <Wind size={12} className="text-teal-500" /> Viento
+                                <tr className="hover:bg-slate-900/30">
+                                  <td className="px-3 py-3 font-medium text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-700 align-middle w-24 text-xs">
+                                    <div className="flex items-center gap-2 h-full">
+                                      <Wind size={14} className="text-teal-500" /> Viento
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-1.5 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                    <td key={i} className={`px-2 py-2 text-center align-middle border-r border-slate-700 last:border-r-0`}>
                                       <div className="flex flex-col items-center justify-center">
-                                        <div className={`inline-flex items-center justify-center gap-1 px-1.5 h-7 rounded-md font-bold w-16 shrink-0 ${getWindColor(f.windSpeed)} text-[11px]`}>
+                                        <div className={`inline-flex items-center justify-center gap-1.5 px-2 h-8 rounded-lg font-bold w-20 shrink-0 ${getWindColor(f.windSpeed)} text-sm`}>
                                           <span>{f.windSpeed}</span>
-                                          <ArrowDown size={10} style={{ transform: `rotate(${getDirectionRotation(f.windDirection)}deg)` }} />
-                                          <span className="text-[8px] opacity-80">{f.windDirection}</span>
+                                          <ArrowDown size={12} style={{ transform: `rotate(${getDirectionRotation(f.windDirection)}deg)` }} />
+                                          <span className="text-[10px] opacity-80">{f.windDirection}</span>
                                         </div>
                                       </div>
                                     </td>
                                   ))}
                                 </tr>
                                 {/* Olas */}
-                                <tr className="hover:bg-slate-900/20">
-                                  <td className="px-2 py-2 font-medium text-slate-500 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-20 text-[10px]">
-                                    <div className="flex items-center gap-1.5 h-full">
-                                      <Waves size={12} className="text-blue-500" /> Olas
+                                <tr className="hover:bg-slate-900/30">
+                                  <td className="px-3 py-3 font-medium text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-700 align-middle w-24 text-xs">
+                                    <div className="flex items-center gap-2 h-full">
+                                      <Waves size={14} className="text-blue-500" /> Olas
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-1.5 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                    <td key={i} className={`px-2 py-2 text-center align-middle border-r border-slate-700 last:border-r-0`}>
                                       <div className="flex flex-col items-center justify-center">
-                                        <div className={`inline-flex items-center justify-center gap-1 px-1.5 h-7 rounded-md font-bold w-16 shrink-0 ${getWaveColor(f.waveHeight)} text-[11px]`}>
+                                        <div className={`inline-flex items-center justify-center gap-1.5 px-2 h-8 rounded-lg font-bold w-20 shrink-0 ${getWaveColor(f.waveHeight)} text-sm`}>
                                           <span>{f.waveHeight}</span>
                                           {f.waveDirection && f.waveDirection !== '-' && (
                                             <>
-                                              <ArrowDown size={10} style={{ transform: `rotate(${getDirectionRotation(f.waveDirection)}deg)` }} />
-                                              <span className="text-[8px] opacity-80">{f.waveDirection}</span>
+                                              <ArrowDown size={12} style={{ transform: `rotate(${getDirectionRotation(f.waveDirection)}deg)` }} />
+                                              <span className="text-[10px] opacity-80">{f.waveDirection}</span>
                                             </>
                                           )}
                                         </div>
@@ -1312,16 +1307,16 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                                   ))}
                                 </tr>
                                 {/* Período */}
-                                <tr className="hover:bg-slate-900/20">
-                                  <td className="px-2 py-2 font-medium text-slate-500 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-20 text-[10px]">
-                                    <div className="flex items-center gap-1.5 h-full">
-                                      <Activity size={12} className="text-indigo-500" /> Período
+                                <tr className="hover:bg-slate-900/30">
+                                  <td className="px-3 py-3 font-medium text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-700 align-middle w-24 text-xs">
+                                    <div className="flex items-center gap-2 h-full">
+                                      <Activity size={14} className="text-indigo-500" /> Período
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-1.5 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                    <td key={i} className={`px-2 py-2 text-center align-middle border-r border-slate-700 last:border-r-0`}>
                                       <div className="flex items-center justify-center">
-                                        <div className={`inline-flex items-center justify-center px-1.5 h-7 rounded-md font-bold w-16 shrink-0 ${getPeriodColor(f.wavePeriod)} text-[11px]`}>
+                                        <div className={`inline-flex items-center justify-center px-2 h-8 rounded-lg font-bold w-20 shrink-0 ${getPeriodColor(f.wavePeriod)} text-sm`}>
                                           {f.wavePeriod}s
                                         </div>
                                       </div>
@@ -1329,16 +1324,16 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                                   ))}
                                 </tr>
                                 {/* Nubosidad */}
-                                <tr className="hover:bg-slate-900/20">
-                                  <td className="px-2 py-2 font-medium text-slate-500 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-20 text-[10px]">
-                                    <div className="flex items-center gap-1.5 h-full">
-                                      <Cloud size={12} className="text-slate-500" /> Nubes
+                                <tr className="hover:bg-slate-900/30">
+                                  <td className="px-3 py-3 font-medium text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-700 align-middle w-24 text-xs">
+                                    <div className="flex items-center gap-2 h-full">
+                                      <Cloud size={14} className="text-slate-500" /> Nubes
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-1.5 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                    <td key={i} className={`px-2 py-2 text-center align-middle border-r border-slate-700 last:border-r-0`}>
                                       <div className="flex items-center justify-center">
-                                        <div className={`inline-flex items-center justify-center px-1.5 h-7 rounded-md font-bold w-16 shrink-0 ${getCloudCoverColor(f.cloudCover)} text-[11px]`}>
+                                        <div className={`inline-flex items-center justify-center px-2 h-8 rounded-lg font-bold w-20 shrink-0 ${getCloudCoverColor(f.cloudCover)} text-sm`}>
                                           {f.cloudCover}%
                                         </div>
                                       </div>
@@ -1346,16 +1341,16 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                                   ))}
                                 </tr>
                                 {/* Clima */}
-                                <tr className="hover:bg-slate-900/20">
-                                  <td className="px-2 py-2 font-medium text-slate-500 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-20 text-[10px]">
-                                    <div className="flex items-center gap-1.5 h-full">
-                                      <Thermometer size={12} className="text-orange-500" /> Temp.
+                                <tr className="hover:bg-slate-900/30">
+                                  <td className="px-3 py-3 font-medium text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-700 align-middle w-24 text-xs">
+                                    <div className="flex items-center gap-2 h-full">
+                                      <Thermometer size={14} className="text-orange-500" /> Temp.
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-1.5 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                    <td key={i} className={`px-2 py-2 text-center align-middle border-r border-slate-700 last:border-r-0`}>
                                       <div className="flex items-center justify-center">
-                                        <div className="inline-flex items-center justify-center px-1.5 h-7 rounded-md font-bold w-16 shrink-0 bg-orange-500/20 text-orange-300 text-[11px]">
+                                        <div className="inline-flex items-center justify-center px-2 h-8 rounded-lg font-bold w-20 shrink-0 bg-orange-500/20 text-orange-300 text-sm">
                                           {f.temperature}°
                                         </div>
                                       </div>
@@ -1376,8 +1371,6 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                         </p>
                       </div>
 
-                      {/* Spots List */}
-                      {/* Veredicto Albatros */}
                       {/* Ad Slot Middle */}
                       <AdSlot className="h-32 w-full mb-8" />
 

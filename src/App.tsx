@@ -48,7 +48,7 @@ const MOCK_RESULT = {
           ]
         }
       ],
-      verdict: "Condiciones épicas por la mañana en Playa Grande."
+      verdict: "El point del día es Playa Grande: condiciones épicas con viento offshore suave y swell consistente."
     },
     {
       date: "2026-03-04",
@@ -65,7 +65,7 @@ const MOCK_RESULT = {
           ]
         }
       ],
-      verdict: "Buscá reparo en Waikiki, el viento sur va a romper el mar abierto."
+      verdict: "El point del día es Waikiki: es el único lugar con reparo real del viento sur para que la ola no se rompa."
     }
   ]
 };
@@ -81,16 +81,17 @@ Reglas de Análisis (El Protocolo Albatros):
   - Si el usuario pide de 08:00 a 23:59, DEBES mostrar "Mañana" (08:00-13:00) Y "Tarde" (13:00-atardecer). No omitas la tarde si el rango la incluye.
   - Si el rango solicitado es específico (ej: 14:00 a 18:00), genera solo la franja de la "Tarde".
   - NO omitas franjas horarias que estén dentro del interés del usuario.
-- Veredicto (CRÍTICO): El veredicto debe ser una recomendación experta. 
+- Veredicto (CRÍTICO): El veredicto debe ser una recomendación experta, DECISIVA y SEGURA. 
   1. Identifica el MEJOR spot del día basándote en el cruce de viento y swell.
-  2. Explica brevemente POR QUÉ es el mejor (ej: "Playa Grande es la mejor opción porque el viento NW entra perfecto de tierra y el swell del SE tiene el período justo").
-  3. Si las condiciones son malas (mar planchado, viento onshore destructivo, etc.), ADVIÉRTELO claramente (ej: "No es un buen día para el surf: el mar está planchado y el viento no ayuda").
-- Morfología del Spot (Prioridad 1): Antes de recomendar, analizá la forma de la costa. Evitá bahías cerradas si el swell es pequeño. Buscá escolleras para rebote (Bodyboard) o playas abiertas para fuerza (Surf).
-- Cruce Swell/Viento-Dirección: Verificá si la dirección del Swell o Viento entra limpia en la orientación de la playa/costa.
-- La Regla del Período (T): T < 7s: Mar movido, "fofo", rinde más para Windsurf si hay viento. T > 9s: Olas con fuerza y rampa. Ideal para Bodyboard.
-- Mareas y Corrientes: Consultá siempre el estado de la marea en el mar.
-- Viento vs. Disciplina: Offshore: Prioridad para Surf/Body. Onshore: Prioridad para Windsurf/Kite si supera los 15 nudos.
-- Fuentes de Consulta (OBLIGATORIO): DEBES usar la herramienta de Google Search para obtener datos actualizados de Windguru, Surfline, Windy y tablas de mareas locales para la fecha y ubicación solicitadas. NO inventes datos. Si no encuentras datos precisos, usa la mejor estimación basada en la búsqueda pero aclara que es una estimación.
+  2. DEBES empezar el veredicto nombrando el spot ganador (ej: "El point del día es Playa Grande...").
+  3. Lógica de Sesión:
+     - Si el mismo spot es el mejor mañana y tarde: "Quedate todo el día en [Spot], las condiciones se mantienen firmes".
+     - Si cambian: "Arrancá en [Spot A] pero después del mediodía cargá las tablas y movete a [Spot B] porque el viento rota".
+     - Si la tarde es mala: "Aprovechá la mañana en [Spot]; a la tarde el mar se rompe, guardá energías para mañana".
+  4. Explica brevemente POR QUÉ es el mejor.
+  5. Si las condiciones son malas, ADVIÉRTELO claramente.
+- Temperatura del Agua y Wetsuit: DEBES estimar la temperatura del agua y recomendar el traje adecuado (ej: 3/2mm, 4/3mm, shorty).
+- Fuentes de Consulta (OBLIGATORIO): DEBES usar Google Search para obtener datos de Windguru, Surfline, Windy, estadodelmar.com.ar y lineup.surf.
 - Consistencia: Los reportes para la misma fecha y lugar deben ser consistentes. Usa los datos reales encontrados en la búsqueda.
 - Tono: Técnico pero cercano. Un lenguaje de "parador de playa" pero con la precisión de un radar náutico.
 
@@ -100,9 +101,11 @@ El output para el usuario debe ser un objeto JSON que contenga:
 3. "dailyResults": Un array de objetos, UNO POR CADA DÍA del rango solicitado. Cada objeto tiene:
    - "date": Fecha (ej: "2026-03-05")
    - "dayName": Nombre del día (ej: "Jueves 5")
+   - "waterTemp": Temperatura del agua estimada (ej: 19)
+   - "wetsuit": Recomendación de traje (ej: "3/2mm")
    - "forecast": Array con el pronóstico por horas de ESE día. Cada objeto debe tener "time" (ej: "Mañana (06:35 - 13:00)"), "windSpeed" (nudos), "windDirection" (ej: "NW"), "waveHeight" (metros, 0 si no aplica), "waveDirection" (ej: "SE"), "wavePeriod" (segundos, 0 si no aplica), "temperature" (°C) y "cloudCover" (porcentaje de nubosidad, de 0 a 100).
    - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. Cada objeto tiene "timeWindow" y "spots" (máximo 3 spots). Cada spot tiene "name", "description" (explicación MUY corta), "lat" y "lng".
-   - "verdict": Veredicto corto para ESE día (máximo 2 oraciones).`;
+   - "verdict": Veredicto experto y decidido.`;
 
 const CostEstimator = ({ stats, hasCustomKey }: { stats: { prompt: number, candidates: number, total: number } | null, hasCustomKey: boolean }) => {
   if (!stats) return null;
@@ -641,6 +644,8 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                   properties: {
                     date: { type: Type.STRING, description: "Fecha (ej: 2026-03-03)" },
                     dayName: { type: Type.STRING, description: "Nombre del día (ej: Martes 3)" },
+                    waterTemp: { type: Type.NUMBER, description: "Temperatura del agua estimada en °C" },
+                    wetsuit: { type: Type.STRING, description: "Recomendación de traje (ej: 3/2mm)" },
                     forecast: {
                       type: Type.ARRAY,
                       description: "Pronóstico detallado por horas para este día. Debe incluir las franjas horarias que coincidan con el rango solicitado.",
@@ -684,9 +689,9 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                         required: ["timeWindow", "spots"]
                       }
                     },
-                    verdict: { type: Type.STRING, description: "Veredicto corto para este día." }
+                    verdict: { type: Type.STRING, description: "Veredicto experto y decidido." }
                   },
-                  required: ["date", "dayName", "forecast", "bestSpots", "verdict"]
+                  required: ["date", "dayName", "waterTemp", "wetsuit", "forecast", "bestSpots", "verdict"]
                 }
               }
             },
@@ -1046,7 +1051,7 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                 animate={{ opacity: 1 }}
                 className="text-[10px] text-slate-500 text-center mt-2 italic"
               >
-                * Albatros está buscando en tiempo real en Windguru y Surfline. Esto puede demorar unos segundos.
+                * Albatros está analizando las condiciones. Esto puede demorar unos segundos.
               </motion.p>
             )}
           </form>
@@ -1151,47 +1156,133 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                       transition={{ duration: 0.2 }}
                       className="flex flex-col"
                     >
+                      {/* Veredicto Albatros */}
+                      {currentDay.verdict && (
+                        <div className="mb-6 bg-gradient-to-br from-cyan-900/40 to-slate-900 border border-cyan-500/30 rounded-xl p-5 shadow-[0_0_30px_rgba(6,182,212,0.15)]">
+                          <h3 className="text-lg font-bold flex items-center gap-2 text-cyan-400 mb-2">
+                            <Target size={20} />
+                            Veredicto Albatros
+                          </h3>
+                          <p className="text-slate-100 leading-relaxed font-medium text-base">
+                            {currentDay.verdict}
+                          </p>
+                          {currentDay.waterTemp && (
+                            <div className="mt-4 pt-4 border-t border-cyan-500/20 flex flex-wrap gap-4">
+                              <div className="flex items-center gap-2 text-sm text-slate-300">
+                                <Thermometer size={16} className="text-blue-400" />
+                                <span>Agua: <span className="text-blue-300 font-bold">{currentDay.waterTemp}°C</span></span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-slate-300">
+                                <Waves size={16} className="text-cyan-400" />
+                                <span>Traje: <span className="text-cyan-300 font-bold">{currentDay.wetsuit}</span></span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Spots List */}
+                      <div className="mb-6">
+                        <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 shadow-lg">
+                          <h3 className="text-lg font-bold flex items-center gap-2 text-slate-200 mb-4">
+                            <MapPin size={20} className="text-cyan-500" />
+                            Los points recomendados
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {currentDay.bestSpots?.map((window: any, i: number) => (
+                              <div key={i} className="bg-slate-950/30 rounded-xl p-4 border border-slate-800/50">
+                                <h4 className="font-bold text-slate-300 mb-3 text-sm uppercase tracking-wider flex items-center gap-2">
+                                  <Calendar size={14} className="text-cyan-500" />
+                                  {window.timeWindow}
+                                </h4>
+                                <div className="space-y-3">
+                                  {window.spots?.map((spot: any, j: number) => (
+                                    <div key={j} className="flex gap-3">
+                                      <div className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] mt-0.5">
+                                        {j + 1}
+                                      </div>
+                                      <div>
+                                        <h5 className="font-semibold text-slate-200 text-sm">{spot.name}</h5>
+                                        <p className="text-slate-400 text-xs mt-0.5 leading-tight">{spot.description}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Map */}
+                      {currentSpots.length > 0 && (
+                        <div className="h-48 md:h-64 w-full rounded-xl overflow-hidden border border-slate-800 shadow-inner z-0 relative mb-6">
+                          <MapContainer
+                            key={`map-${selectedDayIndex}-${currentSpots[0].lat}-${currentSpots[0].lng}`}
+                            center={[currentSpots[0].lat, currentSpots[0].lng]}
+                            zoom={12}
+                            scrollWheelZoom={false}
+                            style={{ height: '100%', width: '100%', zIndex: 0 }}
+                          >
+                            <TileLayer
+                              attribution='&copy; Esri'
+                              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                            />
+                            {currentSpots.map((spot: any, index: number) => (
+                              <Marker key={`${index}-${spot.lat}-${spot.lng}`} position={[spot.lat, spot.lng]}>
+                                <Popup>
+                                  <div className="font-sans p-1">
+                                    <h3 className="font-bold text-cyan-600 text-sm mb-1">{spot.name}</h3>
+                                    <p className="text-xs text-slate-700 m-0 leading-tight">{spot.description}</p>
+                                  </div>
+                                </Popup>
+                              </Marker>
+                            ))}
+                          </MapContainer>
+                        </div>
+                      )}
+
                       {/* Integrated Dashboard (Windguru Style Table) */}
                       {currentDay.forecast && currentDay.forecast.length > 0 && (
                         <div className="bg-slate-950/40 border border-slate-800 rounded-xl overflow-hidden mb-6 shadow-lg">
-                          <div className="p-3.5 border-b border-slate-800/50 bg-slate-900/30 flex justify-between items-center">
-                            <h3 className="text-sm md:text-base font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                              <Activity size={18} className="text-cyan-500" />
-                              Pronóstico Detallado
+                          <div className="p-2.5 border-b border-slate-800/50 bg-slate-900/30 flex justify-between items-center">
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                              <Activity size={14} className="text-cyan-500" />
+                              Estado de las cosas
                             </h3>
                             {result.astronomy && (
-                              <div className="flex items-center gap-4 text-xs md:text-sm text-slate-400 font-medium">
-                                <span className="flex items-center gap-1.5" title="Amanecer"><Sun size={16} className="text-yellow-500"/> {result.astronomy.sunrise}</span>
-                                <span className="flex items-center gap-1.5" title="Atardecer"><Moon size={16} className="text-indigo-400"/> {result.astronomy.sunset}</span>
+                              <div className="flex items-center gap-3 text-[10px] text-slate-500 font-bold uppercase tracking-tighter">
+                                <span className="flex items-center gap-1" title="Amanecer"><Sun size={12} className="text-yellow-600"/> {result.astronomy.sunrise}</span>
+                                <span className="flex items-center gap-1" title="Atardecer"><Moon size={12} className="text-indigo-500"/> {result.astronomy.sunset}</span>
                               </div>
                             )}
                           </div>
                           
                           <div className="overflow-x-auto">
-                            <table className="w-full text-[15px] md:text-[16px] text-left whitespace-nowrap font-sans tracking-tight border-collapse">
+                            <table className="w-full text-xs text-left whitespace-nowrap font-sans tracking-tight border-collapse">
                               <thead>
                                 <tr className="bg-slate-900/30 border-b border-slate-800/50">
-                                  <th className="px-3 py-4 font-medium text-slate-400 sticky left-0 bg-slate-900/90 z-10 border-r border-slate-800/50 w-24">Hora</th>
+                                  <th className="px-2 py-2 font-bold text-slate-500 sticky left-0 bg-slate-900/95 z-10 border-r border-slate-800/50 w-20 uppercase text-[9px] tracking-widest">Hora</th>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <th key={i} className={`px-2 py-4 font-medium text-slate-200 text-center border-r border-slate-800/20 last:border-r-0`}>{f.time}</th>
+                                    <th key={i} className={`px-1 py-2 font-bold text-slate-300 text-center border-r border-slate-800/20 last:border-r-0 text-[10px]`}>{f.time}</th>
                                   ))}
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-slate-800/50">
+                              <tbody className="divide-y divide-slate-800/30">
                                 {/* Viento */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-4 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
+                                  <td className="px-2 py-2 font-medium text-slate-500 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-20 text-[10px]">
                                     <div className="flex items-center gap-1.5 h-full">
-                                      <Wind size={16} className="text-teal-400" /> Viento
+                                      <Wind size={12} className="text-teal-500" /> Viento
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-3 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                    <td key={i} className={`px-1 py-1.5 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
                                       <div className="flex flex-col items-center justify-center">
-                                        <div className={`inline-flex items-center justify-center gap-1.5 px-2 h-9 rounded-lg font-bold w-[88px] shrink-0 ${getWindColor(f.windSpeed)}`}>
+                                        <div className={`inline-flex items-center justify-center gap-1 px-1.5 h-7 rounded-md font-bold w-16 shrink-0 ${getWindColor(f.windSpeed)} text-[11px]`}>
                                           <span>{f.windSpeed}</span>
-                                          <ArrowDown size={14} style={{ transform: `rotate(${getDirectionRotation(f.windDirection)}deg)` }} />
-                                          <span className="text-[10px] opacity-80">{f.windDirection}</span>
+                                          <ArrowDown size={10} style={{ transform: `rotate(${getDirectionRotation(f.windDirection)}deg)` }} />
+                                          <span className="text-[8px] opacity-80">{f.windDirection}</span>
                                         </div>
                                       </div>
                                     </td>
@@ -1199,20 +1290,20 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                                 </tr>
                                 {/* Olas */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-4 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
+                                  <td className="px-2 py-2 font-medium text-slate-500 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-20 text-[10px]">
                                     <div className="flex items-center gap-1.5 h-full">
-                                      <Waves size={16} className="text-blue-400" /> Olas
+                                      <Waves size={12} className="text-blue-500" /> Olas
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-3 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                    <td key={i} className={`px-1 py-1.5 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
                                       <div className="flex flex-col items-center justify-center">
-                                        <div className={`inline-flex items-center justify-center gap-1.5 px-2 h-9 rounded-lg font-bold w-[88px] shrink-0 ${getWaveColor(f.waveHeight)}`}>
+                                        <div className={`inline-flex items-center justify-center gap-1 px-1.5 h-7 rounded-md font-bold w-16 shrink-0 ${getWaveColor(f.waveHeight)} text-[11px]`}>
                                           <span>{f.waveHeight}</span>
                                           {f.waveDirection && f.waveDirection !== '-' && (
                                             <>
-                                              <ArrowDown size={14} style={{ transform: `rotate(${getDirectionRotation(f.waveDirection)}deg)` }} />
-                                              <span className="text-[10px] opacity-80">{f.waveDirection}</span>
+                                              <ArrowDown size={10} style={{ transform: `rotate(${getDirectionRotation(f.waveDirection)}deg)` }} />
+                                              <span className="text-[8px] opacity-80">{f.waveDirection}</span>
                                             </>
                                           )}
                                         </div>
@@ -1222,15 +1313,15 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                                 </tr>
                                 {/* Período */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-4 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
+                                  <td className="px-2 py-2 font-medium text-slate-500 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-20 text-[10px]">
                                     <div className="flex items-center gap-1.5 h-full">
-                                      <Activity size={16} className="text-indigo-400" /> Período
+                                      <Activity size={12} className="text-indigo-500" /> Período
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-3 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                    <td key={i} className={`px-1 py-1.5 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
                                       <div className="flex items-center justify-center">
-                                        <div className={`inline-flex items-center justify-center px-2 h-9 rounded-lg font-bold w-[88px] shrink-0 ${getPeriodColor(f.wavePeriod)}`}>
+                                        <div className={`inline-flex items-center justify-center px-1.5 h-7 rounded-md font-bold w-16 shrink-0 ${getPeriodColor(f.wavePeriod)} text-[11px]`}>
                                           {f.wavePeriod}s
                                         </div>
                                       </div>
@@ -1239,15 +1330,15 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                                 </tr>
                                 {/* Nubosidad */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-4 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
+                                  <td className="px-2 py-2 font-medium text-slate-500 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-20 text-[10px]">
                                     <div className="flex items-center gap-1.5 h-full">
-                                      <Cloud size={16} className="text-slate-400" /> Nubes
+                                      <Cloud size={12} className="text-slate-500" /> Nubes
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-3 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                    <td key={i} className={`px-1 py-1.5 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
                                       <div className="flex items-center justify-center">
-                                        <div className={`inline-flex items-center justify-center px-2 h-9 rounded-lg font-bold w-[88px] shrink-0 ${getCloudCoverColor(f.cloudCover)}`}>
+                                        <div className={`inline-flex items-center justify-center px-1.5 h-7 rounded-md font-bold w-16 shrink-0 ${getCloudCoverColor(f.cloudCover)} text-[11px]`}>
                                           {f.cloudCover}%
                                         </div>
                                       </div>
@@ -1256,15 +1347,15 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                                 </tr>
                                 {/* Clima */}
                                 <tr className="hover:bg-slate-900/20">
-                                  <td className="px-3 py-4 font-normal text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-24">
+                                  <td className="px-2 py-2 font-medium text-slate-500 sticky left-0 bg-slate-900 z-10 border-r border-slate-800/50 align-middle w-20 text-[10px]">
                                     <div className="flex items-center gap-1.5 h-full">
-                                      <Thermometer size={16} className="text-orange-400" /> Temp.
+                                      <Thermometer size={12} className="text-orange-500" /> Temp.
                                     </div>
                                   </td>
                                   {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-1 py-3 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
+                                    <td key={i} className={`px-1 py-1.5 text-center align-middle border-r border-slate-800/20 last:border-r-0`}>
                                       <div className="flex items-center justify-center">
-                                        <div className="inline-flex items-center justify-center px-2 h-9 rounded-lg font-bold w-[88px] shrink-0 bg-orange-500/20 text-orange-300">
+                                        <div className="inline-flex items-center justify-center px-1.5 h-7 rounded-md font-bold w-16 shrink-0 bg-orange-500/20 text-orange-300 text-[11px]">
                                           {f.temperature}°
                                         </div>
                                       </div>
@@ -1278,104 +1369,15 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                       )}
 
                       {/* Disclaimer */}
-                      <div className="mb-6 p-4 bg-slate-800/30 border border-slate-700/50 rounded-lg flex items-start gap-3 text-sm md:text-base text-slate-400 leading-relaxed">
-                        <AlertCircle size={18} className="text-yellow-500/70 shrink-0 mt-0.5" />
+                      <div className="mb-6 p-3 bg-slate-800/20 border border-slate-700/30 rounded-lg flex items-center gap-3 text-[11px] text-slate-500 leading-tight">
+                        <AlertCircle size={14} className="text-yellow-600/50 shrink-0" />
                         <p>
-                          <strong className="text-slate-300">Aviso:</strong> Las condiciones meteorológicas son dinámicas y pueden variar. 
-                          Te sugerimos volver a consultar a Albatros unas horas antes de tu sesión para obtener el pronóstico más actualizado.
+                          <strong className="text-slate-400">Recomendación:</strong> Las condiciones son dinámicas. Volvé a consultar unas horas antes de tu sesión.
                         </p>
                       </div>
 
-                      {/* Share Dropdown */}
-                      <div className="relative mb-8 flex justify-center md:justify-start" ref={shareRefTop}>
-                        <button
-                          onClick={() => setShareOpenTop(!shareOpenTop)}
-                          className="flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium transition-all border border-slate-700 shadow-lg"
-                        >
-                          <Share2 size={18} />
-                          Compartir informe
-                          <ChevronDown size={16} className={`transition-transform duration-200 ${shareOpenTop ? 'rotate-180' : ''}`} />
-                        </button>
-
-                        <AnimatePresence>
-                          {shareOpenTop && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                              animate={{ opacity: 1, y: 0, scale: 1 }}
-                              exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                              className="absolute top-full mt-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden"
-                            >
-                              <button
-                                onClick={() => {
-                                  handleShare();
-                                  setShareOpenTop(false);
-                                }}
-                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800 transition-colors text-slate-200 text-sm"
-                              >
-                                {copied ? <Check size={18} className="text-emerald-400" /> : <Copy size={18} className="text-cyan-400" />}
-                                <span>{copied ? '¡Copiado!' : 'Copiar Link'}</span>
-                              </button>
-                              <a
-                                href={`https://api.whatsapp.com/send?text=${encodeURIComponent('¡Mirá el reporte de Albatros para mi próxima sesión! 🌊🏄‍♂️\n\n' + window.location.href)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={() => setShareOpenTop(false)}
-                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800 transition-colors text-slate-200 text-sm border-t border-slate-800/50"
-                              >
-                                <Share2 size={18} className="text-[#25D366]" />
-                                <span>WhatsApp</span>
-                              </a>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                      
                       {/* Spots List */}
-                      <div className="mb-8">
-                        <div className="mb-4 bg-gradient-to-br from-cyan-900/40 to-slate-900 border border-cyan-500/30 rounded-xl p-6 shadow-[0_0_30px_rgba(6,182,212,0.15)]">
-                          <h3 className="text-xl font-bold flex items-center gap-2 text-cyan-400 mb-6">
-                            <Waves size={24} />
-                            Los points
-                          </h3>
-                          <div className="space-y-6">
-                            {currentDay.bestSpots?.map((window: any, i: number) => (
-                              <div key={i} className="bg-slate-950/30 rounded-xl p-5 border border-slate-800/50">
-                                <h4 className="font-bold text-slate-200 mb-4 text-lg border-b border-slate-800 pb-2 flex items-center gap-2">
-                                  <Calendar size={18} className="text-cyan-500" />
-                                  {window.timeWindow}
-                                </h4>
-                                <div className="space-y-5">
-                                  {window.spots?.map((spot: any, j: number) => (
-                                    <div key={j} className="flex gap-4">
-                                      <div className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold rounded-full w-6 h-6 flex items-center justify-center shrink-0 text-sm mt-0.5">
-                                        {j + 1}
-                                      </div>
-                                      <div>
-                                        <h5 className="font-semibold text-slate-200 text-base">{spot.name}</h5>
-                                        <p className="text-slate-400 text-sm mt-1 leading-relaxed">{spot.description}</p>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
                       {/* Veredicto Albatros */}
-                      {currentDay.verdict && (
-                        <div className="mb-8 bg-gradient-to-br from-cyan-900/40 to-slate-900 border border-cyan-500/30 rounded-xl p-6 shadow-[0_0_30px_rgba(6,182,212,0.15)]">
-                          <h3 className="text-xl font-bold flex items-center gap-2 text-cyan-400 mb-3">
-                            <Target size={24} />
-                            Veredicto Albatros
-                          </h3>
-                          <p className="text-slate-200 leading-relaxed font-medium">
-                            {currentDay.verdict}
-                          </p>
-                        </div>
-                      )}
-
                       {/* Ad Slot Middle */}
                       <AdSlot className="h-32 w-full mb-8" />
 

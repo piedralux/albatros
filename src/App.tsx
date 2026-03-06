@@ -107,6 +107,49 @@ El output para el usuario debe ser un objeto JSON que contenga:
    - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. Cada objeto tiene "timeWindow" y "spots" (máximo 3 spots). Cada spot tiene "name", "description" (explicación MUY corta), "lat", "lng" y "score" (un número del 1 al 10 que representa la calidad del spot para ese momento).
    - "verdict": Veredicto experto y decidido.`;
 
+const TimePicker = ({ value, onChange, minTime, className = "" }: { value: string, onChange: (val: string) => void, minTime?: string, className?: string }) => {
+  const [h, m] = value.split(':');
+  
+  const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
+  const minutes = ['00', '15', '30', '45'];
+
+  const [minH, minM] = minTime ? minTime.split(':') : [null, null];
+
+  return (
+    <div className={`flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 ${className}`}>
+      <select 
+        value={h} 
+        onChange={(e) => onChange(`${e.target.value}:${m}`)}
+        className="bg-transparent text-slate-200 text-sm focus:outline-none cursor-pointer appearance-none px-1"
+      >
+        {hours.map(hr => {
+          const isDisabled = minH !== null && parseInt(hr) < parseInt(minH);
+          return (
+            <option key={hr} value={hr} disabled={isDisabled} className={isDisabled ? "text-slate-600 bg-slate-900" : "bg-slate-900"}>
+              {hr}
+            </option>
+          );
+        })}
+      </select>
+      <span className="text-slate-500 font-bold">:</span>
+      <select 
+        value={m} 
+        onChange={(e) => onChange(`${h}:${e.target.value}`)}
+        className="bg-transparent text-slate-200 text-sm focus:outline-none cursor-pointer appearance-none px-1"
+      >
+        {minutes.map(min => {
+          const isDisabled = minH !== null && minM !== null && h === minH && parseInt(min) < parseInt(minM);
+          return (
+            <option key={min} value={min} disabled={isDisabled} className={isDisabled ? "text-slate-600 bg-slate-900" : "bg-slate-900"}>
+              {min}
+            </option>
+          );
+        })}
+      </select>
+    </div>
+  );
+};
+
 const CostEstimator = ({ stats, hasCustomKey }: { stats: { prompt: number, candidates: number, total: number } | null, hasCustomKey: boolean }) => {
   if (!stats) return null;
 
@@ -358,6 +401,11 @@ const SPORT_IMAGES: Record<string, string[]> = {
 const HERO_IMAGES = SPORT_IMAGES['Surf']; // Default fallback
 
 export default function App() {
+  const getTodayDate = () => {
+    const d = new Date();
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+  };
+
   const getTomorrowDate = () => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -367,9 +415,9 @@ export default function App() {
   const searchParams = new URLSearchParams(window.location.search);
 
   const [location, setLocation] = useState(searchParams.get('loc') || '');
-  const [startDate, setStartDate] = useState(searchParams.get('sDate') || getTomorrowDate());
+  const [startDate, setStartDate] = useState(searchParams.get('sDate') || getTodayDate());
   const [startTime, setStartTime] = useState(searchParams.get('sTime') || '08:00');
-  const [endDate, setEndDate] = useState(searchParams.get('eDate') || getTomorrowDate());
+  const [endDate, setEndDate] = useState(searchParams.get('eDate') || getTodayDate());
   const [endTime, setEndTime] = useState(searchParams.get('eTime') || '12:00');
   const [sport, setSport] = useState(searchParams.get('sport') || 'Surf');
   const [mobility, setMobility] = useState(Number(searchParams.get('mob')) || 10);
@@ -390,6 +438,52 @@ export default function App() {
   const [shareOpenBottom, setShareOpenBottom] = useState(false);
   const [hasCustomKey, setHasCustomKey] = useState(false);
   const [usageStats, setUsageStats] = useState<{ prompt: number, candidates: number, total: number } | null>(null);
+
+  // Auto-adjust time if it's in the past for today
+  useEffect(() => {
+    const today = getTodayDate();
+    if (startDate === today) {
+      const now = new Date();
+      const currentH = now.getHours();
+      const currentM = now.getMinutes();
+      const [sh, sm] = startTime.split(':').map(Number);
+      
+      if (sh < currentH || (sh === currentH && sm < currentM)) {
+        // Round up to next 15 min
+        let nextM = Math.ceil(currentM / 15) * 15;
+        let nextH = currentH;
+        if (nextM >= 60) {
+          nextM = 0;
+          nextH += 1;
+        }
+        if (nextH < 24) {
+          setStartTime(`${nextH.toString().padStart(2, '0')}:${nextM.toString().padStart(2, '0')}`);
+        }
+      }
+    }
+  }, [startDate, startTime]);
+
+  // Auto-adjust end time if it's before start time on same day
+  useEffect(() => {
+    if (startDate === endDate) {
+      const [sh, sm] = startTime.split(':').map(Number);
+      const [eh, em] = endTime.split(':').map(Number);
+      
+      if (eh < sh || (eh === sh && em <= sm)) {
+        let nextM = sm + 60; // Default to 1 hour later
+        let nextH = sh;
+        if (nextM >= 60) {
+          nextM = 0;
+          nextH += 1;
+        }
+        if (nextH < 24) {
+          setEndTime(`${nextH.toString().padStart(2, '0')}:${nextM.toString().padStart(2, '0')}`);
+        } else {
+          setEndTime('23:45');
+        }
+      }
+    }
+  }, [startDate, endDate, startTime, endTime]);
 
   // Check for custom API key on mount
   useEffect(() => {
@@ -531,6 +625,13 @@ export default function App() {
 
     const start = new Date(`${startDate}T${startTime}`);
     const end = new Date(`${endDate}T${endTime}`);
+    const now = new Date();
+
+    if (start < now) {
+      setError('La fecha y hora de inicio no pueden ser anteriores al momento actual.');
+      return;
+    }
+
     const diffDays = (end.getTime() - start.getTime()) / (1000 * 3600 * 24);
     
     if (diffDays > 3) {
@@ -607,8 +708,12 @@ export default function App() {
 📅 RANGO SOLICITADO:
 - Inicio: ${start.toLocaleString('es-AR')}
 - Fin: ${end.toLocaleString('es-AR')}
+🕒 HORA ACTUAL (Referencia): ${now.toLocaleString('es-AR')}
 
-Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el horario solicitado incluye la mañana (antes de las 13:00), mostrá la franja "Mañana". Si incluye la tarde (después de las 13:00), mostrá la franja "Tarde". Si incluye ambas, MOSTRÁ AMBAS.
+Instrucción para el modelo: Analizá cada día del rango solicitado. 
+IMPORTANTE: Solo mostrá franjas horarias que se encuentren DENTRO del rango solicitado (${startTime} a ${endTime}). 
+Si el usuario pide de 15:00 a 19:00, NO muestres la franja "Mañana" aunque existan datos. 
+Si el rango solicitado ya pasó (es anterior a la HORA ACTUAL), no lo incluyas o aclará que ya pasó en el veredicto.
 
 🏄 Deporte: ${sport}
 🚗 Movilidad: Hasta ${mobility}km
@@ -920,17 +1025,17 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                       <input
                         type="date"
                         value={startDate}
+                        min={getTodayDate()}
                         onChange={(e) => setStartDate(e.target.value)}
                         className="w-full bg-transparent focus:outline-none text-sm text-slate-200 [color-scheme:dark]"
                         required
                       />
                     </div>
-                    <input
-                      type="time"
+                    <TimePicker
                       value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className="w-28 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 text-sm text-slate-200 [color-scheme:dark]"
-                      required
+                      onChange={(val) => setStartTime(val)}
+                      minTime={startDate === getTodayDate() ? `${new Date().getHours().toString().padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}` : undefined}
+                      className="w-28"
                     />
                   </div>
                 </div>
@@ -944,19 +1049,18 @@ Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el
                       <input
                         type="date"
                         value={endDate}
-                        min={startDate}
+                        min={startDate || getTodayDate()}
                         max={getMaxEndDate(startDate)}
                         onChange={(e) => setEndDate(e.target.value)}
                         className="w-full bg-transparent focus:outline-none text-sm text-slate-200 [color-scheme:dark]"
                         required
                       />
                     </div>
-                    <input
-                      type="time"
+                    <TimePicker
                       value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      className="w-28 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 text-sm text-slate-200 [color-scheme:dark]"
-                      required
+                      onChange={(val) => setEndTime(val)}
+                      minTime={endDate === startDate ? startTime : undefined}
+                      className="w-28"
                     />
                   </div>
                 </div>

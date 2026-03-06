@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI, Type } from '@google/genai';
+import React, { useState, useEffect, useRef } from 'react';
+import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
 import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud, CloudRain, Droplet, ArrowRight, Sun, Moon, AlertCircle, ArrowDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -7,6 +7,15 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+
+declare global {
+  interface Window {
+    aistudio?: {
+      hasSelectedApiKey: () => Promise<boolean>;
+      openSelectKey: () => Promise<void>;
+    };
+  }
+}
 
 // Fix Leaflet's default icon path issues with bundlers
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -68,10 +77,14 @@ Reglas de Análisis (El Protocolo Albatros):
 - Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE SOBRE EL AGUA, A 50 METROS DE LA ORILLA. NUNCA EN LA TIERRA FIRME, NUNCA EN LA CIUDAD, NUNCA EN EL CAMPO. SIEMPRE EN EL AGUA AZUL. Los usuarios se quejan de que los pines caen en el pasto o en la calle. MUY IMPORTANTE: Verifica mentalmente la latitud y longitud. Si la coordenada cae en tierra firme, AJUSTA la coordenada moviéndola hacia el mar (por ejemplo, en la costa atlántica de Buenos Aires, el mar está al Este y Sur, así que suma a la longitud para ir al Este o resta a la latitud para ir al Sur). Sé extremadamente preciso con los decimales (ej: -38.0345, -57.5321). EL PIN DEBE CAER EN EL MAR, NO EN LA ARENA.
 - Playas Prohibidas (CRÍTICO): NUNCA RECOMIENDES "La Perla" en Mar del Plata para Surf o Bodyboard. Es una playa muy pequeña y con una forma que apacigua mucho la ola. Evita siempre recomendar playas pequeñas, muy cerradas o con rompeolas que anulen el swell para deportes de ola.
 - Resultados por Día: DEBES generar un análisis completo (pronóstico, spots y veredicto) para CADA UNO de los días dentro del rango de fechas solicitado.
-- Tabla de Pronóstico: Genera un pronóstico detallado por franjas horarias para cada día. OBLIGATORIO: Solo debes generar EXACTAMENTE 2 franjas horarias por día:
-  1. Mañana: Desde la hora de amanecer (sunrise) hasta las 13:00. (ej: "Mañana (06:35 - 13:00)")
-  2. Tarde: Desde las 13:00 hasta la hora de atardecer (sunset). (ej: "Tarde (13:00 - 19:30)")
-- Astronomía: Calcula e incluye la hora estimada de amanecer y atardecer para la ubicación y época del año. Usa estas horas para definir el inicio de la Mañana y el fin de la Tarde.
+- Tabla de Pronóstico y Spots: DEBES generar el análisis para TODAS las franjas horarias que se solapen con el rango solicitado por el usuario en cada día.
+  - Si el usuario pide de 08:00 a 23:59, DEBES mostrar "Mañana" (08:00-13:00) Y "Tarde" (13:00-atardecer). No omitas la tarde si el rango la incluye.
+  - Si el rango solicitado es específico (ej: 14:00 a 18:00), genera solo la franja de la "Tarde".
+  - NO omitas franjas horarias que estén dentro del interés del usuario.
+- Veredicto (CRÍTICO): El veredicto debe ser una recomendación experta. 
+  1. Identifica el MEJOR spot del día basándote en el cruce de viento y swell.
+  2. Explica brevemente POR QUÉ es el mejor (ej: "Playa Grande es la mejor opción porque el viento NW entra perfecto de tierra y el swell del SE tiene el período justo").
+  3. Si las condiciones son malas (mar planchado, viento onshore destructivo, etc.), ADVIÉRTELO claramente (ej: "No es un buen día para el surf: el mar está planchado y el viento no ayuda").
 - Morfología del Spot (Prioridad 1): Antes de recomendar, analizá la forma de la costa. Evitá bahías cerradas si el swell es pequeño. Buscá escolleras para rebote (Bodyboard) o playas abiertas para fuerza (Surf).
 - Cruce Swell/Viento-Dirección: Verificá si la dirección del Swell o Viento entra limpia en la orientación de la playa/costa.
 - La Regla del Período (T): T < 7s: Mar movido, "fofo", rinde más para Windsurf si hay viento. T > 9s: Olas con fuerza y rampa. Ideal para Bodyboard.
@@ -106,37 +119,43 @@ const RadarLoader = ({ sport = 'Surf' }: { sport?: string }) => {
       'Analizando el swell...',
       'Buscando la serie perfecta...',
       'Chequeando el período de las olas...',
-      'Viendo dónde rompe mejor...'
+      'Viendo dónde rompe mejor...',
+      'Consultando Windguru y Surfline...'
     ],
     'Bodyboard': [
       'Buscando rampas...',
       'Analizando el rebote en las escolleras...',
       'Chequeando la fuerza del labio...',
-      'Escaneando tubos...'
+      'Escaneando tubos...',
+      'Consultando Windguru y Surfline...'
     ],
     'Windsurf': [
       'Midiendo rachas...',
       'Buscando viento constante...',
       'Analizando el planeo...',
-      'Chequeando la dirección del viento...'
+      'Chequeando la dirección del viento...',
+      'Consultando Windguru y Surfline...'
     ],
     'Kitesurf': [
       'Escaneando la ventana de viento...',
       'Buscando el mejor lanzamiento...',
       'Analizando la densidad del aire...',
-      'Chequeando condiciones para saltar...'
+      'Chequeando condiciones para saltar...',
+      'Consultando Windguru y Surfline...'
     ],
     'SUP': [
       'Buscando aguas tranquilas...',
       'Analizando la deriva...',
       'Chequeando el viento de costa...',
-      'Escaneando el horizonte...'
+      'Escaneando el horizonte...',
+      'Consultando Windguru y Surfline...'
     ],
     'Wingfoil': [
       'Analizando el despegue...',
       'Buscando el mejor foil track...',
       'Midiendo la presión del viento...',
-      'Chequeando el choppy...'
+      'Chequeando el choppy...',
+      'Consultando Windguru y Surfline...'
     ]
   };
 
@@ -305,8 +324,10 @@ export default function App() {
   
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any | null>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | React.ReactNode | null>(null);
   const [showCharts, setShowCharts] = useState(false);
+  const [isFromCache, setIsFromCache] = useState(false);
+  const [cacheTimestamp, setCacheTimestamp] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [progress, setProgress] = useState(0);
   const [hasAutoSubmitted, setHasAutoSubmitted] = useState(false);
@@ -314,6 +335,29 @@ export default function App() {
   const [heroImage, setHeroImage] = useState(HERO_IMAGES[0]);
   const [shareOpenTop, setShareOpenTop] = useState(false);
   const [shareOpenBottom, setShareOpenBottom] = useState(false);
+  const [hasCustomKey, setHasCustomKey] = useState(false);
+
+  // Check for custom API key on mount
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.aistudio?.hasSelectedApiKey) {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setHasCustomKey(hasKey);
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleOpenKeySelector = async () => {
+    if (window.aistudio?.openSelectKey) {
+      await window.aistudio.openSelectKey();
+      // Assume success and refresh state
+      const hasKey = await window.aistudio.hasSelectedApiKey();
+      setHasCustomKey(hasKey);
+      setError(null);
+    }
+  };
+
   const resultsRef = useRef<HTMLDivElement>(null);
   const shareRefTop = useRef<HTMLDivElement>(null);
   const shareRefBottom = useRef<HTMLDivElement>(null);
@@ -372,7 +416,8 @@ export default function App() {
       interval = setInterval(() => {
         setProgress((prev) => {
           if (prev >= 95) return 95;
-          return prev + Math.random() * 15;
+          const increment = Math.random() * 8;
+          return Math.min(95, prev + increment);
         });
       }, 800);
     } else {
@@ -452,31 +497,51 @@ export default function App() {
 
     // Cache key based on search parameters to save API quota
     const cacheKey = `albatros_${params.toString()}`;
-    const cachedResult = localStorage.getItem(cacheKey);
+    const cachedEntry = localStorage.getItem(cacheKey);
+    const CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
-    if (cachedResult) {
+    if (cachedEntry) {
       try {
-        console.log("Cargando desde caché para ahorrar cuota de API...");
-        setResult(JSON.parse(cachedResult));
-        playSuccess();
-        setLoading(false);
-        return;
+        const { data, timestamp } = JSON.parse(cachedEntry);
+        const age = Date.now() - timestamp;
+        
+        if (age < CACHE_TTL) {
+          console.log("Cargando desde caché para ahorrar cuota de API...");
+          setResult(data);
+          setIsFromCache(true);
+          setCacheTimestamp(timestamp);
+          playSuccess();
+          setLoading(false);
+          return;
+        } else {
+          console.log("Caché expirada, solicitando nuevos datos...");
+          localStorage.removeItem(cacheKey);
+        }
       } catch (e) {
-        // If cache is invalid, ignore and fetch again
         localStorage.removeItem(cacheKey);
       }
     }
 
+    setIsFromCache(false);
+    setCacheTimestamp(null);
+
     const prompt = `
 📍 Ubicación: ${location}
-📅 Fecha y Franja Horaria: Desde ${start.toLocaleString('es-AR')} hasta ${end.toLocaleString('es-AR')}
+📅 RANGO SOLICITADO:
+- Inicio: ${start.toLocaleString('es-AR')}
+- Fin: ${end.toLocaleString('es-AR')}
+
+Instrucción para el modelo: Analizá cada día del rango. Para cada día, si el horario solicitado incluye la mañana (antes de las 13:00), mostrá la franja "Mañana". Si incluye la tarde (después de las 13:00), mostrá la franja "Tarde". Si incluye ambas, MOSTRÁ AMBAS.
+
 🏄 Deporte: ${sport}
 🚗 Movilidad: Hasta ${mobility}km
 🎯 Objetivo: ${objective || 'No especificado'}
 `;
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      // Use custom API key if available, otherwise fallback to platform key
+      const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+      
       if (!apiKey || apiKey === 'undefined') {
         setError('Falta configurar la clave GEMINI_API_KEY en Vercel. Entrá a la configuración de tu proyecto en Vercel > Settings > Environment Variables y agregala.');
         setLoading(false);
@@ -489,6 +554,7 @@ export default function App() {
         contents: prompt,
         config: {
           temperature: 0, // Deterministic output for consistent forecasts
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           systemInstruction: SYSTEM_INSTRUCTION,
           responseMimeType: "application/json",
           tools: [{ googleSearch: {} }],
@@ -515,7 +581,7 @@ export default function App() {
                     dayName: { type: Type.STRING, description: "Nombre del día (ej: Martes 3)" },
                     forecast: {
                       type: Type.ARRAY,
-                      description: "Pronóstico detallado por horas para este día. OBLIGATORIO: EXACTAMENTE 2 franjas horarias (Mañana y Tarde).",
+                      description: "Pronóstico detallado por horas para este día. Debe incluir las franjas horarias que coincidan con el rango solicitado.",
                       items: {
                         type: Type.OBJECT,
                         properties: {
@@ -533,7 +599,7 @@ export default function App() {
                     },
                     bestSpots: {
                       type: Type.ARRAY,
-                      description: "Los mejores spots para este día agrupados por franja horaria.",
+                      description: "Los mejores spots para este día agrupados por franja horaria. Solo incluye franjas que estén dentro del rango solicitado.",
                       items: {
                         type: Type.OBJECT,
                         properties: {
@@ -575,8 +641,11 @@ export default function App() {
       setResult(parsed);
       playSuccess();
       
-      // Save successful result to cache
-      localStorage.setItem(cacheKey, JSON.stringify(parsed));
+      // Save successful result to cache with timestamp
+      localStorage.setItem(cacheKey, JSON.stringify({
+        data: parsed,
+        timestamp: Date.now()
+      }));
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       console.error(err);
@@ -584,7 +653,24 @@ export default function App() {
         console.warn("Rate limit or service unavailable hit. Using mock data.");
         setResult(MOCK_RESULT);
         playSuccess();
-        setError('⚠️ Estamos con mucha demanda en el radar. Te mostramos un reporte de demostración mientras liberamos el canal. ¡Probá de nuevo en unos minutos!');
+        
+        if (!hasCustomKey) {
+          setError(
+            <div className="flex flex-col gap-3">
+              <p>⚠️ El radar gratuito está saturado por la alta demanda.</p>
+              <p className="text-xs opacity-80">Para hacer consultas ilimitadas y sin esperas, vinculá tu propia API Key de Google Cloud.</p>
+              <button 
+                onClick={handleOpenKeySelector}
+                className="bg-cyan-500 hover:bg-cyan-400 text-slate-900 px-4 py-2 rounded-lg font-bold text-xs transition-colors self-start"
+              >
+                VINCULAR MI API KEY (RECOMENDADO)
+              </button>
+              <p className="text-[10px] opacity-60 italic">Requiere proyecto en Google Cloud con facturación activa (es gratis hasta un volumen muy alto).</p>
+            </div>
+          );
+        } else {
+          setError('⚠️ El servicio de Google está experimentando una demora inusual. Te mostramos datos de respaldo mientras se normaliza.');
+        }
       } else {
         setError(`Hubo un error al consultar a Albatros (${err.message || 'Error desconocido'}). Por favor, intentá de nuevo.`);
       }
@@ -631,8 +717,25 @@ export default function App() {
 
       {/* Header */}
       <header className="bg-slate-950/60 backdrop-blur-md border-b border-slate-800/50 text-white py-4 px-4 sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto flex items-center justify-center">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <div className="w-10 md:w-32"></div> {/* Spacer for centering logo */}
           <img src="https://res.cloudinary.com/dktrerrgh/image/upload/v1772578506/logo_sgdozx.png" alt="Albatros" className="h-[50px] md:h-[70px] w-auto" />
+          
+          <div className="flex items-center gap-3">
+            {hasCustomKey && (
+              <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Radar Premium</span>
+              </div>
+            )}
+            <button 
+              onClick={handleOpenKeySelector}
+              className={`p-2 rounded-xl border transition-all ${hasCustomKey ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-cyan-400'}`}
+              title={hasCustomKey ? "API Key Vinculada" : "Vincular API Key propia"}
+            >
+              <Target size={20} />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -852,6 +955,16 @@ export default function App() {
                 )}
               </div>
             </button>
+            
+            {loading && (
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-[10px] text-slate-500 text-center mt-2 italic"
+              >
+                * Albatros está buscando en tiempo real en Windguru y Surfline. Esto puede demorar unos segundos.
+              </motion.p>
+            )}
           </form>
 
           {/* Ad Slot Sidebar */}
@@ -879,10 +992,41 @@ export default function App() {
                 exit={{ opacity: 0, y: -10 }}
                 className="bg-slate-900/60 backdrop-blur-md rounded-2xl shadow-xl border border-slate-800/80 p-6 md:p-8 h-full flex flex-col"
               >
-                <div className="mb-6">
-                  <h2 className="text-xl md:text-2xl font-medium text-slate-100 leading-tight w-full text-center md:text-left">
+                <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <h2 className="text-xl md:text-2xl font-medium text-slate-100 leading-tight text-center md:text-left">
                     {result.greeting}
                   </h2>
+                  
+                  {isFromCache && (
+                    <div className="flex items-center justify-center md:justify-end gap-2">
+                      <div className="px-3 py-1 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-full flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                          Datos en Caché ({new Date(cacheTimestamp!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                        </span>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const cacheKey = `albatros_${new URLSearchParams({
+                            loc: location,
+                            sDate: startDate,
+                            sTime: startTime,
+                            eDate: endDate,
+                            eTime: endTime,
+                            sport,
+                            mob: mobility.toString(),
+                            obj: objective
+                          }).toString()}`;
+                          localStorage.removeItem(cacheKey);
+                          handleSubmit();
+                        }}
+                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-cyan-400 rounded-lg border border-slate-700 transition-colors"
+                        title="Forzar actualización"
+                      >
+                        <Loader2 size={14} className={loading ? "animate-spin" : ""} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Tabs */}

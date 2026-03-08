@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
-import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud, CloudRain, Droplet, ArrowRight, Sun, Moon, AlertCircle, ArrowDown, Shirt, Star } from 'lucide-react';
+import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud, CloudRain, Droplet, ArrowRight, Sun, Moon, AlertCircle, ArrowDown, Shirt, Star, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -70,25 +70,24 @@ const MOCK_RESULT = {
   ]
 };
 
-const SYSTEM_INSTRUCTION = `Rol: Sos Albatros, un asesor experto en deportes de tabla marítimos (Surf, Bodyboard, Windsurf, Kitesurf, SUP, Wingfoil). Tu rango de acción es EXCLUSIVAMENTE la costa atlántica de la provincia de Buenos Aires y Río Negro, Argentina, abarcando desde San Clemente del Tuyú hasta Carmen de Patagones. NO recomiendes spots en ríos, lagos ni lagunas.
+const SYSTEM_INSTRUCTION = `Rol: Sos La posta del point, un asesor experto en deportes de tabla marítimos (Surf, Bodyboard, Windsurf, Kitesurf, SUP, Wingfoil). Tu rango de acción es EXCLUSIVAMENTE la costa atlántica de la provincia de Buenos Aires y Río Negro, Argentina, abarcando desde San Clemente del Tuyú hasta Carmen de Patagones. NO recomiendes spots en ríos, lagos ni lagunas.
 
-Reglas de Análisis (El Protocolo Albatros):
+Reglas de Análisis (El Protocolo La posta del point):
 - Brevedad (CRÍTICO): Para reducir el tiempo de respuesta, mantén las descripciones muy breves (máximo 15 palabras por spot). No generes texto de relleno.
 - Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE SOBRE EL AGUA, A 50 METROS DE LA ORILLA. NUNCA EN LA TIERRA FIRME, NUNCA EN LA CIUDAD, NUNCA EN EL CAMPO. SIEMPRE EN EL AGUA AZUL. Los usuarios se quejan de que los pines caen en el pasto o en la calle. MUY IMPORTANTE: Verifica mentalmente la latitud y longitud. Si la coordenada cae en tierra firme, AJUSTA la coordenada moviéndola hacia el mar (por ejemplo, en la costa atlántica de Buenos Aires, el mar está al Este y Sur, así que suma a la longitud para ir al Este o resta a la latitud para ir al Sur). Sé extremadamente preciso con los decimales (ej: -38.0345, -57.5321). EL PIN DEBE CAER EN EL MAR, NO EN LA ARENA.
 - Playas Prohibidas (CRÍTICO): NUNCA RECOMIENDES "La Perla" en Mar del Plata para Surf o Bodyboard. Es una playa muy pequeña y con una forma que apacigua mucho la ola. Evita siempre recomendar playas pequeñas, muy cerradas o con rompeolas que anulen el swell para deportes de ola.
 - Resultados por Día: DEBES generar un análisis completo (pronóstico, spots y veredicto) para CADA UNO de los días dentro del rango de fechas solicitado.
-- Tabla de Pronóstico y Spots (FILTRADO ESTRICTO): DEBES generar el análisis ÚNICAMENTE para las franjas horarias que se encuentren DENTRO del rango solicitado por el usuario.
-  - PROHIBIDO mencionar o recomendar horarios fuera del rango (ej: si pide la tarde, NO hables del amanecer ni de la mañana).
-  - Si el rango solicitado es específico (ej: 15:30 a 19:00), el veredicto y los spots recomendados DEBEN centrarse exclusivamente en ese bloque.
-  - NO inventes datos de madrugada (ej: 03:00 AM) a menos que sea un rango solicitado.
-- Veredicto (CRÍTICO): El veredicto debe ser una recomendación experta, DECISIVA y SEGURA para el RANGO SOLICITADO. 
-  1. Identifica el MEJOR spot DENTRO DEL HORARIO PEDIDO.
-  2. DEBES empezar el veredicto nombrando el spot ganador (ej: "El point del día para esta tarde es Playa Grande...").
-  3. Lógica de Sesión:
-     - Centrate en la evolución del viento y swell durante las horas solicitadas.
-     - Si el usuario pide un rango que ya pasó para el día de hoy, aclará que la ventana de oportunidad ya cerró o recomendá para el día siguiente si está en el rango.
-  4. Explica brevemente POR QUÉ es el mejor.
-  5. Si las condiciones son malas, ADVIÉRTELO claramente.
+- Horario Lógico (CRÍTICO): A partir de ahora, el análisis debe cubrir el DÍA COMPLETO, desde que amanece hasta que se va el sol. Este es el horario lógico para practicar estos deportes.
+- Lógica de Spots Específicos (CRÍTICO):
+  - Playa Grande (Mar del Plata): 
+    - "El Yacht" es mejor con vientos del E, NE o SE suave, ya que la escollera protege. Es para un nivel más avanzado.
+    - "Biología" es mejor cuando el viento es del N, NW o W (offshore) y el swell no es masivo. Es más amigable y suele estar más limpio si el Yacht está picado por viento cruzado.
+    - Si el viento es del Norte, RECOMIENDA Biología sobre el Yacht. Si el viento es del Este/Sudeste, el Yacht suele tener mejor forma por el reparo de la piedra.
+- Veredicto (CRÍTICO): El veredicto debe ser una recomendación experta, DECISIVA y SEGURA para la jornada completa. 
+  1. Identifica el MEJOR spot del día.
+  2. DEBES empezar el veredicto nombrando el spot ganador (ej: "El point del día para esta jornada es Playa Grande...").
+  3. Explica brevemente POR QUÉ es el mejor.
+  4. Si las condiciones son malas, ADVIÉRTELO claramente.
 - Temperatura del Agua y Wetsuit: DEBES estimar la temperatura del agua y recomendar el traje adecuado (ej: 3/2mm, 4/3mm, shorty).
 - Fuentes de Consulta (OBLIGATORIO): DEBES usar Google Search para obtener datos de Windguru, Surfline, Windy, estadodelmar.com.ar y lineup.surf.
 - Consistencia: Los reportes para la misma fecha y lugar deben ser consistentes. Usa los datos reales encontrados en la búsqueda.
@@ -102,7 +101,7 @@ El output para el usuario debe ser un objeto JSON que contenga:
    - "dayName": Nombre del día (ej: "Jueves 5")
    - "waterTemp": Temperatura del agua estimada (ej: 19)
    - "wetsuit": Recomendación de traje (ej: "3/2mm")
-   - "forecast": Array con el pronóstico por horas de ESE día. Cada objeto debe tener "time" (ej: "Mañana (06:35 - 13:00)"), "windSpeed" (nudos), "windDirection" (ej: "NW"), "waveHeight" (metros, 0 si no aplica), "waveDirection" (ej: "SE"), "wavePeriod" (segundos, 0 si no aplica), "temperature" (°C) y "cloudCover" (porcentaje de nubosidad, de 0 a 100).
+   - "forecast": Array con el pronóstico por horas de ESE día (Mañana, Mediodía, Tarde). Cada objeto debe tener "time" (ej: "Mañana (07:00)"), "windSpeed" (nudos), "windDirection" (ej: "NW"), "waveHeight" (metros, 0 si no aplica), "waveDirection" (ej: "SE"), "wavePeriod" (segundos, 0 si no aplica), "temperature" (°C) y "cloudCover" (porcentaje de nubosidad, de 0 a 100).
    - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. Cada objeto tiene "timeWindow" y "spots" (máximo 3 spots). Cada spot tiene "name", "description" (explicación MUY corta), "lat", "lng" y "score" (un número del 1 al 10 que representa la calidad del spot para ese momento).
    - "verdict": Veredicto experto y decidido.`;
 
@@ -115,31 +114,31 @@ const TimePicker = ({ value, onChange, minTime, className = "" }: { value: strin
   const [minH, minM] = minTime ? minTime.split(':') : [null, null];
 
   return (
-    <div className={`flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 ${className}`}>
+    <div className={`flex items-center gap-1 bg-white border-2 border-slate-100 rounded-2xl px-3 py-2 ${className}`}>
       <select 
         value={h} 
         onChange={(e) => onChange(`${e.target.value}:${m}`)}
-        className="bg-transparent text-slate-200 text-sm focus:outline-none cursor-pointer appearance-none px-1"
+        className="bg-transparent text-slate-800 text-sm font-bold focus:outline-none cursor-pointer appearance-none px-1"
       >
         {hours.map(hr => {
           const isDisabled = minH !== null && parseInt(hr) < parseInt(minH);
           return (
-            <option key={hr} value={hr} disabled={isDisabled} className={isDisabled ? "text-slate-600 bg-slate-900" : "bg-slate-900"}>
+            <option key={hr} value={hr} disabled={isDisabled} className={isDisabled ? "text-slate-300" : "text-slate-800"}>
               {hr}
             </option>
           );
         })}
       </select>
-      <span className="text-slate-500 font-bold">:</span>
+      <span className="text-slate-300 font-black">:</span>
       <select 
         value={m} 
         onChange={(e) => onChange(`${h}:${e.target.value}`)}
-        className="bg-transparent text-slate-200 text-sm focus:outline-none cursor-pointer appearance-none px-1"
+        className="bg-transparent text-slate-800 text-sm font-bold focus:outline-none cursor-pointer appearance-none px-1"
       >
         {minutes.map(min => {
           const isDisabled = minH !== null && minM !== null && h === minH && parseInt(min) < parseInt(minM);
           return (
-            <option key={min} value={min} disabled={isDisabled} className={isDisabled ? "text-slate-600 bg-slate-900" : "bg-slate-900"}>
+            <option key={min} value={min} disabled={isDisabled} className={isDisabled ? "text-slate-300" : "text-slate-800"}>
               {min}
             </option>
           );
@@ -200,9 +199,9 @@ const CostEstimator = ({ stats, hasCustomKey }: { stats: { prompt: number, candi
 };
 
 const AdSlot = ({ className = '' }: { className?: string }) => (
-  <div className={`bg-slate-900/30 backdrop-blur-md border border-slate-800 border-dashed flex flex-col items-center justify-center text-slate-500 text-sm p-4 rounded-xl ${className}`}>
-    <span className="font-medium text-slate-600 mb-1">Espacio Publicitario</span>
-    <span className="text-xs opacity-50">(Google Ads)</span>
+  <div className={`bg-slate-100 border border-slate-200 border-dashed flex flex-col items-center justify-center text-slate-400 text-[10px] p-4 rounded-2xl ${className}`}>
+    <span className="font-bold uppercase tracking-widest mb-1">Espacio Publicitario</span>
+    <span className="opacity-50">Publicidad relevante para riders</span>
   </div>
 );
 
@@ -340,11 +339,168 @@ const getPeriodColor = (period: number) => {
   return 'bg-purple-900/50 text-purple-300';
 };
 
-const getCloudCoverColor = (cover: number) => {
+const getCloudColor = (cover: number) => {
   if (cover < 20) return 'bg-slate-100 text-slate-800'; // Despejado
   if (cover < 50) return 'bg-slate-300 text-slate-800'; // Algo nublado
   if (cover < 80) return 'bg-slate-500 text-slate-100'; // Mayormente nublado
   return 'bg-slate-700 text-slate-100'; // Nublado
+};
+
+const EstadoDeLasCosas = ({ forecast, waterTemp, wetsuit }: { forecast: any[], waterTemp: number, wetsuit: string }) => {
+  if (!forecast || forecast.length === 0) return null;
+
+  const periods = forecast.slice(0, 3);
+
+  return (
+    <div className="bg-white rounded-[1.5rem] overflow-hidden border border-slate-100 shadow-xl">
+      <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Activity className="text-orange-600" size={24} />
+          <h3 className="text-xl font-display font-extrabold italic tracking-tight text-slate-900">Pronóstico detallado</h3>
+        </div>
+        <div className="flex items-center gap-4 text-xs font-bold text-slate-400">
+          <div className="flex items-center gap-1">
+            <Sun size={14} className="text-yellow-500" />
+            <span>06:38</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Moon size={14} className="text-indigo-400" />
+            <span>19:24</span>
+          </div>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="text-xs font-extrabold uppercase tracking-widest text-slate-400 border-b border-slate-50">
+              <th className="px-6 py-5 bg-slate-50/50">HORA</th>
+              {periods.map((p, i) => (
+                <th key={i} className="px-6 py-5 text-center bg-slate-50/30 text-sm text-slate-900 font-black">{p.time}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            <tr>
+              <td className="px-6 py-5 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+                <Wind size={16} className="text-orange-600" /> Viento
+              </td>
+              {periods.map((p, i) => (
+                <td key={i} className="px-6 py-5 text-center">
+                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-black text-sm ${i === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-yellow-50 text-yellow-700'}`}>
+                    {p.windSpeed} <Navigation size={12} style={{ transform: `rotate(${getDirectionRotation(p.windDirection)}deg)` }} /> {p.windDirection}
+                  </div>
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="px-6 py-5 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+                <Waves size={16} className="text-orange-600" /> Olas
+              </td>
+              {periods.map((p, i) => (
+                <td key={i} className="px-6 py-5 text-center">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-black text-sm bg-cyan-50 text-cyan-700">
+                    {p.waveHeight} <Navigation size={12} style={{ transform: `rotate(${getDirectionRotation(p.waveDirection)}deg)` }} /> {p.waveDirection}
+                  </div>
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="px-6 py-5 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+                <Activity size={16} className="text-orange-600" /> Período
+              </td>
+              {periods.map((p, i) => (
+                <td key={i} className="px-6 py-5 text-center">
+                  <div className="inline-flex items-center gap-2 px-5 py-2 rounded-xl font-black text-sm bg-blue-50 text-blue-700">
+                    {p.wavePeriod}s
+                  </div>
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="px-6 py-5 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+                <Cloud size={16} className="text-orange-600" /> Nubes
+              </td>
+              {periods.map((p, i) => (
+                <td key={i} className="px-6 py-5 text-center">
+                  <div className="inline-flex items-center gap-2 px-5 py-2 rounded-xl font-black text-sm bg-slate-100 text-slate-600">
+                    {p.cloudCover}%
+                  </div>
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="px-6 py-5 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+                <Thermometer size={16} className="text-orange-600" /> Temp.
+              </td>
+              {periods.map((p, i) => (
+                <td key={i} className="px-6 py-5 text-center">
+                  <div className={`inline-flex items-center gap-2 px-5 py-2 rounded-xl font-black text-sm ${i === 0 ? 'bg-orange-50 text-orange-600' : 'bg-orange-100 text-orange-700'}`}>
+                    {p.temperature}°
+                  </div>
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="px-6 py-5 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+                <Droplet size={16} className="text-orange-600" /> Agua
+              </td>
+              <td colSpan={2} className="px-6 py-5 text-center">
+                <div className="inline-flex items-center gap-4">
+                  <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-xl font-bold text-sm">
+                    <Thermometer size={18} />
+                    {waterTemp}°C
+                  </div>
+                  <div className="flex items-center gap-2 bg-orange-50 text-orange-700 px-4 py-2 rounded-xl font-bold text-sm">
+                    <Shirt size={18} />
+                    {wetsuit}
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const MapView = ({ spots, activeSpot, onSpotClick }: { spots: any[], activeSpot: any, onSpotClick: (spot: any) => void }) => {
+  const center: [number, number] = activeSpot ? [activeSpot.lat, activeSpot.lng] : (spots.length > 0 ? [spots[0].lat, spots[0].lng] : [-38.0055, -57.5426]);
+  
+  return (
+    <div className="h-[300px] lg:h-[400px] w-full rounded-[1.5rem] overflow-hidden border-4 border-white shadow-xl relative z-0">
+      <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
+        {spots.map((spot, idx) => (
+          <Marker 
+            key={idx} 
+            position={[spot.lat, spot.lng]}
+            eventHandlers={{
+              click: () => onSpotClick(spot),
+            }}
+          >
+            <Popup>
+              <div className="p-2">
+                <h4 className="font-bold text-slate-900">{spot.name}</h4>
+                <p className="text-xs text-slate-600 mb-2">{spot.description}</p>
+                <a 
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-black uppercase text-orange-600 hover:underline flex items-center gap-1"
+                >
+                  <Navigation size={10} /> Cómo llegar
+                </a>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+    </div>
+  );
 };
 
 const getDirectionRotation = (dir: string) => {
@@ -394,6 +550,10 @@ const SPORT_IMAGES: Record<string, string[]> = {
     'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578537/wind-3.jpg',
     'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578539/wind-1.jpg',
     'https://res.cloudinary.com/dktrerrgh/image/upload/v1772578539/wind-2.jpg'
+  ],
+  'SUP': [
+    'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=1000',
+    'https://images.unsplash.com/photo-1517176642928-59272c582ba7?auto=format&fit=crop&q=80&w=1000'
   ]
 };
 
@@ -414,14 +574,26 @@ export default function App() {
   const searchParams = new URLSearchParams(window.location.search);
 
   const [location, setLocation] = useState(searchParams.get('loc') || '');
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [startDate, setStartDate] = useState(searchParams.get('sDate') || getTodayDate());
-  const [startTime, setStartTime] = useState(searchParams.get('sTime') || '08:00');
   const [endDate, setEndDate] = useState(searchParams.get('eDate') || getTodayDate());
-  const [endTime, setEndTime] = useState(searchParams.get('eTime') || '12:00');
   const [sport, setSport] = useState(searchParams.get('sport') || 'Surf');
-  const [mobility, setMobility] = useState(Number(searchParams.get('mob')) || 10);
+  const [mobility, setMobility] = useState(Number(searchParams.get('mob')) || 20);
   const [objective, setObjective] = useState(searchParams.get('obj') || '');
   
+  const suggestions = [
+    'Mar del Plata',
+    'Necochea',
+    'Miramar',
+    'Pinamar',
+    'Villa Gesell',
+    'Quequén',
+    'Claromecó',
+    'Monte Hermoso',
+    'Mar Chiquita',
+    'Santa Teresita'
+  ].filter(s => s.toLowerCase().includes(location.toLowerCase()));
+
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any | null>(null);
   const [error, setError] = useState<string | React.ReactNode | null>(null);
@@ -437,52 +609,9 @@ export default function App() {
   const [shareOpenBottom, setShareOpenBottom] = useState(false);
   const [hasCustomKey, setHasCustomKey] = useState(false);
   const [usageStats, setUsageStats] = useState<{ prompt: number, candidates: number, total: number } | null>(null);
-
-  // Auto-adjust time if it's in the past for today
-  useEffect(() => {
-    const today = getTodayDate();
-    if (startDate === today) {
-      const now = new Date();
-      const currentH = now.getHours();
-      const currentM = now.getMinutes();
-      const [sh, sm] = startTime.split(':').map(Number);
-      
-      if (sh < currentH || (sh === currentH && sm < currentM)) {
-        // Round up to next 15 min
-        let nextM = Math.ceil(currentM / 15) * 15;
-        let nextH = currentH;
-        if (nextM >= 60) {
-          nextM = 0;
-          nextH += 1;
-        }
-        if (nextH < 24) {
-          setStartTime(`${nextH.toString().padStart(2, '0')}:${nextM.toString().padStart(2, '0')}`);
-        }
-      }
-    }
-  }, [startDate, startTime]);
-
-  // Auto-adjust end time if it's before start time on same day
-  useEffect(() => {
-    if (startDate === endDate) {
-      const [sh, sm] = startTime.split(':').map(Number);
-      const [eh, em] = endTime.split(':').map(Number);
-      
-      if (eh < sh || (eh === sh && em <= sm)) {
-        let nextM = sm + 60; // Default to 1 hour later
-        let nextH = sh;
-        if (nextM >= 60) {
-          nextM = 0;
-          nextH += 1;
-        }
-        if (nextH < 24) {
-          setEndTime(`${nextH.toString().padStart(2, '0')}:${nextM.toString().padStart(2, '0')}`);
-        } else {
-          setEndTime('23:45');
-        }
-      }
-    }
-  }, [startDate, endDate, startTime, endTime]);
+  const [view, setView] = useState<'form' | 'results'>('form');
+  const [activeSpot, setActiveSpot] = useState<any | null>(null);
+  const mapRef = useRef<any>(null);
 
   // Check for custom API key on mount
   useEffect(() => {
@@ -559,7 +688,7 @@ export default function App() {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 300);
     }
-  }, [result, loading]);
+  }, [result, loading, view]);
 
   useEffect(() => {
     if (result) {
@@ -615,19 +744,19 @@ export default function App() {
       return;
     }
 
-    if (!location || !startDate || !startTime || !endDate || !endTime) {
-      setError('Por favor, completá la ubicación, fechas y horarios.');
+    if (!location || !startDate || !endDate) {
+      setError('Por favor, completá la ciudad y las fechas.');
       return;
     }
 
     playClick();
 
-    const start = new Date(`${startDate}T${startTime}`);
-    const end = new Date(`${endDate}T${endTime}`);
+    const start = new Date(`${startDate}T00:00:00`);
+    const end = new Date(`${endDate}T23:59:59`);
     const now = new Date();
 
-    if (start < now) {
-      setError('La fecha y hora de inicio no pueden ser anteriores al momento actual.');
+    if (new Date(`${startDate}T23:59:59`) < now) {
+      setError('La fecha de inicio no puede ser anterior al día de hoy.');
       return;
     }
 
@@ -653,9 +782,7 @@ export default function App() {
     const params = new URLSearchParams({
       loc: location,
       sDate: startDate,
-      sTime: startTime,
       eDate: endDate,
-      eTime: endTime,
       sport,
       mob: mobility.toString(),
       obj: objective
@@ -663,7 +790,7 @@ export default function App() {
     window.history.pushState({}, '', `?${params.toString()}`);
 
     // Cache key based on search parameters to save API quota
-    const cacheKey = `albatros_${params.toString()}`;
+    const cacheKey = `laposta_${params.toString()}`;
     const cachedEntry = localStorage.getItem(cacheKey);
     const CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
@@ -675,6 +802,7 @@ export default function App() {
         if (age < CACHE_TTL) {
           console.log("Cargando desde caché para ahorrar cuota de API...");
           setResult(data);
+          setView('results');
           setIsFromCache(true);
           setCacheTimestamp(timestamp);
           playSuccess();
@@ -705,15 +833,13 @@ export default function App() {
     const prompt = `
 📍 Ubicación: ${location}
 📅 RANGO SOLICITADO:
-- Inicio: ${start.toLocaleString('es-AR')}
-- Fin: ${end.toLocaleString('es-AR')}
+- Inicio: ${start.toLocaleDateString('es-AR')}
+- Fin: ${end.toLocaleDateString('es-AR')}
 🕒 HORA ACTUAL (Referencia): ${now.toLocaleString('es-AR')}
 
 Instrucción para el modelo: Analizá cada día del rango solicitado. 
-REGLA DE ORO: Solo mostrá franjas horarias que se encuentren DENTRO del rango solicitado (${startTime} a ${endTime}). 
-ESTÁ TERMINANTEMENTE PROHIBIDO hablar de la "Mañana" o del "Amanecer" si el usuario pidió la "Tarde" (ej: 15:30 a 19:00). 
-El veredicto debe ignorar cualquier condición fuera de las horas pedidas.
-Si el rango solicitado ya pasó (es anterior a la HORA ACTUAL), informalo de manera profesional.
+REGLA DE ORO: El análisis debe cubrir la JORNADA COMPLETA, desde el amanecer hasta el atardecer.
+El veredicto debe centrarse en el mejor momento y lugar del día.
 
 🏄 Deporte: ${sport}
 🚗 Movilidad: Hasta ${mobility}km
@@ -783,7 +909,7 @@ Si el rango solicitado ya pasó (es anterior a la HORA ACTUAL), informalo de man
                     },
                     bestSpots: {
                       type: Type.ARRAY,
-                      description: "Los mejores spots para este día agrupados por franja horaria. Solo incluye franjas que estén dentro del rango solicitado.",
+                      description: "Los mejores spots para este día agrupados por franja horaria.",
                       items: {
                         type: Type.OBJECT,
                         properties: {
@@ -833,6 +959,7 @@ Si el rango solicitado ya pasó (es anterior a la HORA ACTUAL), informalo de man
       }
       
       setResult(parsed);
+      setView('results');
       playSuccess();
       
       // Save successful result to cache with timestamp
@@ -853,7 +980,7 @@ Si el rango solicitado ya pasó (es anterior a la HORA ACTUAL), informalo de man
             <div className="flex flex-col gap-3">
               <p className="font-bold">⚠️ El radar gratuito está saturado.</p>
               <p className="text-xs opacity-80">
-                Para usar Albatros sin límites, necesitás vincular tu propia API Key. 
+                Para usar La posta del point sin límites, necesitás vincular tu propia API Key. 
                 <span className="block mt-1 text-cyan-400 font-medium">Importante: Google requiere que tu proyecto tenga la facturación activa (aunque el uso de Gemini suele entrar en el plan gratuito).</span>
               </p>
               <div className="flex flex-wrap gap-2">
@@ -879,7 +1006,7 @@ Si el rango solicitado ya pasó (es anterior a la HORA ACTUAL), informalo de man
           setError('⚠️ El servicio de Google está experimentando una demora inusual. Te mostramos datos de respaldo mientras se normaliza.');
         }
       } else {
-        setError(`Hubo un error al consultar a Albatros (${err.message || 'Error desconocido'}). Por favor, intentá de nuevo.`);
+        setError(`Hubo un error al consultar a La posta del point (${err.message || 'Error desconocido'}). Por favor, intentá de nuevo.`);
       }
     } finally {
       clearTimeout(timeoutId);
@@ -894,7 +1021,7 @@ Si el rango solicitado ya pasó (es anterior a la HORA ACTUAL), informalo de man
       setHasAutoSubmitted(true);
       handleSubmit();
     }
-  }, [hasAutoSubmitted, location, startDate, startTime, endDate, endTime, sport, mobility, objective]);
+  }, [hasAutoSubmitted, location, startDate, endDate, sport, mobility, objective]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -908,675 +1035,431 @@ Si el rango solicitado ya pasó (es anterior a la HORA ACTUAL), informalo de man
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-cyan-900 selection:text-cyan-50 relative">
-      {/* Global Background Image for Hero Area */}
-      <div className="absolute top-0 left-0 w-full h-[850px] lg:h-[950px] z-0 overflow-hidden pointer-events-none">
-        <img 
-          src={heroImage}
-          alt="Hero background"
-          referrerPolicy="no-referrer"
-          className="absolute inset-0 w-full h-full object-cover animate-kenburns will-change-transform"
-        />
-        {/* Overlays for readability and smooth fade to background */}
-        <div className="absolute inset-0 bg-slate-950/20"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-transparent to-transparent h-32"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent"></div>
-      </div>
-
-      {/* Header */}
-      <header className="bg-slate-950/60 backdrop-blur-md border-b border-slate-800/50 text-white py-4 px-4 sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="w-10 md:w-32"></div> {/* Spacer for centering logo */}
-          <img src="https://res.cloudinary.com/dktrerrgh/image/upload/v1772578506/logo_sgdozx.png" alt="Albatros" className="h-[50px] md:h-[70px] w-auto" />
-          
-          <div className="flex items-center gap-3">
-            {hasCustomKey && (
-              <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Radar Premium</span>
-              </div>
-            )}
-            <button 
-              onClick={handleOpenKeySelector}
-              className={`p-2 rounded-xl border transition-all ${hasCustomKey ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-cyan-400'}`}
-              title={hasCustomKey ? "API Key Vinculada" : "Vincular API Key propia"}
-            >
-              <Target size={20} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Intro Text */}
-      <section className="relative z-10 w-full flex items-center justify-center pt-24 pb-16 lg:pt-32 lg:pb-24">
-        {/* Content */}
-        <div className="max-w-5xl mx-auto px-4 text-center flex flex-col items-center">
-          <h1 className="text-4xl md:text-5xl font-display text-white mb-6 tracking-wider drop-shadow-lg uppercase max-w-[90%] md:max-w-none">
-            Recomendador de points acuaticos
-          </h1>
-          <div className="w-full max-w-[90%] md:max-w-[800px]">
-            <p className="text-slate-200 text-xl md:text-2xl leading-relaxed drop-shadow-md font-normal">
-              ¡Te tiramos la posta del mejor point para tu metida al mar!
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Top Ad Slots */}
-      <div className="relative z-10 max-w-5xl mx-auto px-4 py-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <AdSlot className="h-24 w-full" />
-        <AdSlot className="h-24 w-full hidden md:flex" />
-      </div>
-
-      <main className="relative z-10 max-w-5xl mx-auto p-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Form Section */}
-        <section className="lg:col-span-5 bg-slate-900/60 backdrop-blur-md rounded-2xl shadow-xl border border-slate-800/80 p-6 flex flex-col gap-6">
-          <h2 className="text-xl font-semibold flex items-center gap-2 text-white">
-            <Navigation className="text-cyan-500" size={20} />
-            Configurá tu sesión
-          </h2>
-          
-          <form onSubmit={handleSubmit} className="space-y-5">
-            
-            {/* Ubicación */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                <MapPin size={16} className="text-slate-500" />
-                Ubicación (Costa Atlántica)
-              </label>
-              <input
-                type="text"
-                placeholder="Ej: Mar del Plata / Necochea / Monte Hermoso"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all text-slate-200 placeholder-slate-600"
-                required
+    <div className="min-h-screen font-sans selection:bg-orange-200">
+      <AnimatePresence mode="wait">
+        {view === 'form' ? (
+          <motion.div
+            key="form-view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="relative min-h-screen flex flex-col"
+          >
+            {/* Background Hero */}
+            <div className="absolute inset-0 z-0 overflow-hidden">
+              <img 
+                src={heroImage} 
+                alt="Surf background" 
+                className="w-full h-full object-cover animate-kenburns opacity-100"
+                referrerPolicy="no-referrer"
               />
-              {location && location.length > 3 && (
-                <div className="mt-2 h-32 w-full rounded-xl overflow-hidden border border-slate-800 opacity-80 hover:opacity-100 transition-opacity">
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0, filter: 'invert(90%) hue-rotate(180deg)' }}
-                    loading="lazy"
-                    allowFullScreen
-                    referrerPolicy="no-referrer-when-downgrade"
-                    src={`https://www.google.com/maps?q=${encodeURIComponent(location + ', Argentina')}&output=embed`}
-                  ></iframe>
-                </div>
-              )}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-slate-100" />
             </div>
 
-            {/* Fechas */}
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                <Calendar size={16} className="text-slate-500" />
-                Fecha y Franja Horaria
-              </label>
-              
-              <div className="space-y-3">
-                {/* Desde */}
-                <div className="bg-slate-950/30 p-3 rounded-xl border border-slate-800 space-y-2">
-                  <span className="text-xs text-cyan-500 font-medium uppercase tracking-wider block">Desde</span>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-cyan-500/50 focus-within:border-cyan-500">
-                      <span className="text-sm text-slate-400 font-medium w-8">{getDayOfWeek(startDate)}</span>
-                      <input
-                        type="date"
-                        value={startDate}
-                        min={getTodayDate()}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className="w-full bg-transparent focus:outline-none text-sm text-slate-200 [color-scheme:dark]"
-                        required
-                      />
-                    </div>
-                    <TimePicker
-                      value={startTime}
-                      onChange={(val) => setStartTime(val)}
-                      minTime={startDate === getTodayDate() ? `${new Date().getHours().toString().padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}` : undefined}
-                      className="w-28"
-                    />
-                  </div>
-                </div>
-
-                {/* Hasta */}
-                <div className="bg-slate-950/30 p-3 rounded-xl border border-slate-800 space-y-2">
-                  <span className="text-xs text-cyan-500 font-medium uppercase tracking-wider block">Hasta (Máx 3 días)</span>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-cyan-500/50 focus-within:border-cyan-500">
-                      <span className="text-sm text-slate-400 font-medium w-8">{getDayOfWeek(endDate)}</span>
-                      <input
-                        type="date"
-                        value={endDate}
-                        min={startDate || getTodayDate()}
-                        max={getMaxEndDate(startDate)}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        className="w-full bg-transparent focus:outline-none text-sm text-slate-200 [color-scheme:dark]"
-                        required
-                      />
-                    </div>
-                    <TimePicker
-                      value={endTime}
-                      onChange={(val) => setEndTime(val)}
-                      minTime={endDate === startDate ? startTime : undefined}
-                      className="w-28"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Deporte */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                <Activity size={16} className="text-slate-500" />
-                Deporte
-              </label>
-              <select
-                value={sport}
-                onChange={(e) => setSport(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all appearance-none text-slate-200"
+            {/* Header */}
+            <header className="relative z-10 p-6 flex justify-end items-center">
+              <button 
+                onClick={() => window.aistudio?.openSelectKey?.()}
+                className="p-2 hover:bg-white/50 rounded-full transition-colors"
+                title="Configurar API Key"
               >
-                <option value="Surf">Surf</option>
-                <option value="Bodyboard">Bodyboard</option>
-                <option value="Windsurf">Windsurf</option>
-                <option value="Kitesurf">Kitesurf</option>
-                <option value="SUP">SUP</option>
-                <option value="Wingfoil">Wingfoil</option>
-              </select>
-            </div>
+                <AlertCircle size={20} className={hasCustomKey ? "text-green-600" : "text-slate-400"} />
+              </button>
+            </header>
 
-            {/* Movilidad */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-300 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Car size={16} className="text-slate-500" />
-                  Movilidad
-                </div>
-                <span className="text-cyan-400 font-semibold bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-md text-xs">
-                  Hasta {mobility} km
-                </span>
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={mobility}
-                onChange={(e) => setMobility(Number(e.target.value))}
-                className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-              />
-              <div className="flex justify-between text-xs text-slate-500 px-1">
-                <span>0 km</span>
-                <span>100 km</span>
+            {/* Main Form Hero */}
+            <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-12">
+              <div className="w-full max-w-2xl text-center mb-12">
+                  <h1 
+                    className="text-5xl md:text-7xl font-display font-extrabold text-slate-900 mb-6 leading-[0.9] tracking-tight uppercase italic"
+                  >
+                    LA POSTA DEL <span className="text-orange-600">POINT</span>
+                  </h1>
+                <p className="text-xl text-slate-700 font-medium mx-auto">
+                  Tu radar experto para deportes de tabla en la costa argentina.
+                </p>
               </div>
-            </div>
 
-            {/* Objetivo */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                <Target size={16} className="text-slate-500" />
-                Objetivo <span className="text-slate-600 font-normal text-xs">(Opcional)</span>
-              </label>
-              <textarea
-                placeholder="Ej: Busco rampas para volar / Busco mar calmo para remar"
-                value={objective}
-                onChange={(e) => setObjective(e.target.value)}
-                rows={2}
-                className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all resize-none text-sm text-slate-200 placeholder-slate-600"
-              />
-            </div>
-
-            {error && (
-              <div className="p-3 bg-red-500/10 text-red-400 text-sm rounded-xl border border-red-500/20">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className={`relative w-full text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg overflow-hidden ${
-                loading 
-                  ? 'bg-red-600 hover:bg-red-500 shadow-red-900/20' 
-                  : 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-900/20'
-              }`}
-            >
-              {loading && (
-                <div 
-                  className="absolute left-0 top-0 bottom-0 bg-white/20 transition-all duration-500 ease-out"
-                  style={{ width: `${progress}%` }}
-                />
-              )}
-              <div className="relative z-10 flex items-center gap-2">
-                {loading ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    <span>Cancelar búsqueda... {Math.round(progress)}%</span>
-                  </>
-                ) : (
-                  <>
-                    <Wind size={18} />
-                    <span>Consultar a Albatros</span>
-                  </>
-                )}
-              </div>
-            </button>
-            
-            {loading && (
-              <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-[10px] text-slate-500 text-center mt-2 italic"
-              >
-                * Albatros está analizando las condiciones. Esto puede demorar unos segundos.
-              </motion.p>
-            )}
-          </form>
-
-          {/* Ad Slot Sidebar */}
-          <AdSlot className="flex-1 min-h-[200px] w-full mt-4" />
-          
-          {/* Cost Estimator */}
-          <CostEstimator stats={usageStats} hasCustomKey={hasCustomKey} />
-        </section>
-
-        {/* Results Section */}
-        <section className="lg:col-span-7" ref={resultsRef}>
-          <AnimatePresence mode="wait">
-            {loading ? (
-              <motion.div
-                key="loading"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-slate-900/30 backdrop-blur-md rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center lg:justify-start lg:pt-40 text-center min-h-[400px]"
-              >
-                <RadarLoader sport={sport} />
-              </motion.div>
-            ) : result ? (
-              <motion.div
-                key="result"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="bg-slate-900/60 backdrop-blur-md rounded-2xl shadow-xl border border-slate-800/80 p-6 md:p-8 h-full flex flex-col"
-              >
-                <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <h2 className="text-xl md:text-2xl font-medium text-slate-100 leading-tight text-center md:text-left">
-                    {result.greeting}
-                  </h2>
-                  
-                  {isFromCache && (
-                    <div className="flex items-center justify-center md:justify-end gap-2">
-                      <div className="px-3 py-1 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-full flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                          Datos en Caché ({new Date(cacheTimestamp!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
-                        </span>
+              <div className="w-full max-w-3xl flex flex-col items-center">
+                <motion.div 
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="w-full bg-white rounded-[1.5rem] p-5 md:p-6 shadow-2xl border-white/50"
+                >
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* CIUDAD */}
+                    <div className="space-y-2 relative">
+                      <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">CIUDAD</label>
+                      <div className="relative">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500" size={20} />
+                        <input
+                          type="text"
+                          placeholder="Ej: Mar del Plata, Necochea..."
+                          value={location}
+                          onChange={(e) => {
+                            setLocation(e.target.value);
+                            setShowSuggestions(true);
+                          }}
+                          onFocus={() => setShowSuggestions(true)}
+                          className="w-full pl-12 pr-4 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-orange-500 transition-all text-lg font-semibold text-slate-800 shadow-sm"
+                          required
+                        />
+                        {showSuggestions && location && suggestions.length > 0 && (
+                          <div className="absolute z-50 w-full mt-2 bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden">
+                            {suggestions.map((s, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => {
+                                  setLocation(s);
+                                  setShowSuggestions(false);
+                                }}
+                                className="w-full px-6 py-4 text-left hover:bg-slate-50 text-slate-700 font-bold border-b border-slate-50 last:border-0 transition-colors"
+                              >
+                                {s}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <button 
-                        onClick={() => {
-                          const cacheKey = `albatros_${new URLSearchParams({
-                            loc: location,
-                            sDate: startDate,
-                            sTime: startTime,
-                            eDate: endDate,
-                            eTime: endTime,
-                            sport,
-                            mob: mobility.toString(),
-                            obj: objective
-                          }).toString()}`;
-                          localStorage.removeItem(cacheKey);
-                          handleSubmit();
-                        }}
-                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-cyan-400 rounded-lg border border-slate-700 transition-colors"
-                        title="Forzar actualización"
-                      >
-                        <Loader2 size={14} className={loading ? "animate-spin" : ""} />
-                      </button>
                     </div>
-                  )}
-                </div>
 
-                {/* Tabs */}
-                {result.dailyResults && result.dailyResults.length > 0 && (
-                  <div className="flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide">
-                    {result.dailyResults.map((day: any, index: number) => (
-                      <button
-                        key={index}
-                        onClick={() => setSelectedDayIndex(index)}
-                        className={`px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-colors ${
-                          selectedDayIndex === index 
-                            ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/20' 
-                            : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-700/50'
-                        }`}
-                      >
-                        {day.dayName}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                    {/* Fechas */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">Desde</label>
+                        <input
+                          type="date"
+                          value={startDate}
+                          min={getTodayDate()}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="w-full px-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-orange-500 text-sm font-bold text-slate-800 [color-scheme:light]"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">Hasta</label>
+                        <input
+                          type="date"
+                          value={endDate}
+                          min={startDate || getTodayDate()}
+                          max={getMaxEndDate(startDate)}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="w-full px-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-orange-500 text-sm font-bold text-slate-800 [color-scheme:light]"
+                          required
+                        />
+                      </div>
+                    </div>
 
-                {/* Content for selected day */}
-                {result.dailyResults && result.dailyResults.length > 0 && (() => {
-                  const currentDay = result.dailyResults[selectedDayIndex];
-                  if (!currentDay) return null;
-                  
-                  // Extraer todos los spots para el mapa de ESTE día
-                  const currentSpots = currentDay.bestSpots?.flatMap((window: any) => window.spots) || [];
-
-                  return (
-                    <motion.div
-                      key={selectedDayIndex}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="flex flex-col"
-                    >
-                      {/* Veredicto Albatros */}
-                      {currentDay.verdict && (
-                        <div className="mb-6 bg-gradient-to-br from-cyan-900/40 to-slate-900 border border-cyan-500/30 rounded-xl p-5 shadow-[0_0_30px_rgba(6,182,212,0.15)]">
-                          <h3 className="text-lg font-bold flex items-center gap-2 text-cyan-400 mb-2">
-                            <Target size={20} />
-                            Veredicto Albatros
-                          </h3>
-                          <p className="text-slate-100 leading-relaxed font-medium text-base">
-                            {currentDay.verdict}
-                          </p>
-                          {currentDay.waterTemp && (
-                            <div className="mt-4 pt-4 border-t border-cyan-500/20 flex flex-wrap gap-4">
-                              <div className="flex items-center gap-2 text-sm text-slate-300">
-                                <Thermometer size={16} className="text-blue-400" />
-                                <span>Agua: <span className="text-blue-300 font-bold">{currentDay.waterTemp}°C</span></span>
-                              </div>
-                              <div className="flex items-center gap-2 text-sm text-slate-300">
-                                <Shirt size={16} className="text-cyan-400" />
-                                <span>Traje: <span className="text-cyan-300 font-bold">{currentDay.wetsuit}</span></span>
-                              </div>
-                            </div>
-                          )}
+                    {/* Deporte y Movilidad */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                      <div className="space-y-2">
+                        <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">Deporte</label>
+                        <div className="grid grid-cols-3 gap-2 bg-slate-100 p-1 rounded-2xl">
+                          {['Surf', 'Bodyboard', 'Kitesurf', 'Windsurf', 'SUP', 'Wingfoil'].map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => setSport(s)}
+                              className={`py-3 rounded-xl text-xs font-extrabold transition-all ${sport === s ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                              {s}
+                            </button>
+                          ))}
                         </div>
-                      )}
-
-                      {/* Spots List */}
-                      <div className="mb-6">
-                        <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 shadow-lg">
-                          <h3 className="text-lg font-bold flex items-center gap-2 text-slate-200 mb-4">
-                            <MapPin size={20} className="text-cyan-500" />
-                            Los points recomendados
-                          </h3>
-                          <div className="grid grid-cols-1 gap-6">
-                            {currentDay.bestSpots?.map((window: any, i: number) => (
-                              <div key={i} className="bg-slate-950/30 rounded-xl p-6 border border-slate-800/50">
-                                <h4 className="font-bold text-slate-200 mb-4 text-base uppercase tracking-wider flex items-center gap-2">
-                                  <Calendar size={18} className="text-cyan-500" />
-                                  {window.timeWindow}
-                                </h4>
-                                <div className="space-y-5">
-                                  {window.spots?.map((spot: any, j: number) => (
-                                    <div key={j} className="flex gap-4 items-start">
-                                      <div className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold rounded-full w-7 h-7 flex items-center justify-center shrink-0 text-xs mt-0.5">
-                                        {j + 1}
-                                      </div>
-                                      <div className="flex-1">
-                                        <div className="flex items-center justify-between gap-2">
-                                          <h5 className="font-bold text-slate-100 text-lg">{spot.name}</h5>
-                                          {spot.score && (
-                                            <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold">
-                                              <Star size={12} className="fill-emerald-400" />
-                                              <span>{spot.score}/10</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                        <p className="text-slate-300 text-sm mt-1 leading-relaxed">{spot.description}</p>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">Movilidad</label>
+                        </div>
+                        <div className="pt-4 px-2">
+                          <input
+                            type="range"
+                            min="0"
+                            max="50"
+                            step="10"
+                            value={mobility}
+                            onChange={(e) => setMobility(Number(e.target.value))}
+                            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
+                          />
+                          <div className="flex justify-between text-[10px] font-black text-slate-400 mt-3 px-1">
+                            {['0', '10', '20', '30', '40', '50'].map(val => (
+                              <span key={val} className={mobility === Number(val) ? 'text-orange-600 scale-125 transition-transform' : ''}>
+                                {val}KM
+                              </span>
                             ))}
                           </div>
                         </div>
                       </div>
+                    </div>
 
-                      {/* Map */}
-                      {/* Integrated Dashboard (Windguru Style Table) */}
-                      {currentDay.forecast && currentDay.forecast.length > 0 && (
-                        <div className="bg-slate-950/40 border border-slate-800 rounded-xl overflow-hidden mb-6 shadow-lg">
-                          <div className="p-3 border-b border-slate-700 bg-slate-900/40 flex justify-between items-center">
-                            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest flex items-center gap-1.5">
-                              <Activity size={16} className="text-cyan-500" />
-                              Estado de las cosas
-                            </h3>
-                            {result.astronomy && (
-                              <div className="flex items-center gap-4 text-xs text-slate-400 font-bold uppercase tracking-tighter">
-                                <span className="flex items-center gap-1.5" title="Amanecer"><Sun size={14} className="text-yellow-600"/> {result.astronomy.sunrise}</span>
-                                <span className="flex items-center gap-1.5" title="Atardecer"><Moon size={14} className="text-indigo-500"/> {result.astronomy.sunset}</span>
-                              </div>
-                            )}
-                          </div>
-                          
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left whitespace-nowrap font-sans tracking-tight border-collapse">
-                              <thead>
-                                <tr className="bg-slate-900/40 border-b border-slate-700">
-                                  <th className="px-3 py-3 font-bold text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-700 w-24 uppercase text-[10px] tracking-widest">Hora</th>
-                                  {currentDay.forecast.map((f: any, i: number) => (
-                                    <th key={i} className={`px-2 py-3 font-bold text-slate-200 text-center border-r border-slate-700 last:border-r-0 text-xs`}>{f.time}</th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-700">
-                                {/* Viento */}
-                                <tr className="hover:bg-slate-900/30">
-                                  <td className="px-3 py-3 font-medium text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-700 align-middle w-24 text-xs">
-                                    <div className="flex items-center gap-2 h-full">
-                                      <Wind size={14} className="text-teal-500" /> Viento
-                                    </div>
-                                  </td>
-                                  {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-2 py-2 text-center align-middle border-r border-slate-700 last:border-r-0`}>
-                                      <div className="flex flex-col items-center justify-center">
-                                        <div className={`inline-flex items-center justify-center gap-1.5 px-2 h-8 rounded-lg font-bold w-20 shrink-0 ${getWindColor(f.windSpeed)} text-sm`}>
-                                          <span>{f.windSpeed}</span>
-                                          <ArrowDown size={12} style={{ transform: `rotate(${getDirectionRotation(f.windDirection)}deg)` }} />
-                                          <span className="text-[10px] opacity-80">{f.windDirection}</span>
-                                        </div>
-                                      </div>
-                                    </td>
-                                  ))}
-                                </tr>
-                                {/* Olas */}
-                                <tr className="hover:bg-slate-900/30">
-                                  <td className="px-3 py-3 font-medium text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-700 align-middle w-24 text-xs">
-                                    <div className="flex items-center gap-2 h-full">
-                                      <Waves size={14} className="text-blue-500" /> Olas
-                                    </div>
-                                  </td>
-                                  {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-2 py-2 text-center align-middle border-r border-slate-700 last:border-r-0`}>
-                                      <div className="flex flex-col items-center justify-center">
-                                        <div className={`inline-flex items-center justify-center gap-1.5 px-2 h-8 rounded-lg font-bold w-20 shrink-0 ${getWaveColor(f.waveHeight)} text-sm`}>
-                                          <span>{f.waveHeight}</span>
-                                          {f.waveDirection && f.waveDirection !== '-' && (
-                                            <>
-                                              <ArrowDown size={12} style={{ transform: `rotate(${getDirectionRotation(f.waveDirection)}deg)` }} />
-                                              <span className="text-[10px] opacity-80">{f.waveDirection}</span>
-                                            </>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </td>
-                                  ))}
-                                </tr>
-                                {/* Período */}
-                                <tr className="hover:bg-slate-900/30">
-                                  <td className="px-3 py-3 font-medium text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-700 align-middle w-24 text-xs">
-                                    <div className="flex items-center gap-2 h-full">
-                                      <Activity size={14} className="text-indigo-500" /> Período
-                                    </div>
-                                  </td>
-                                  {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-2 py-2 text-center align-middle border-r border-slate-700 last:border-r-0`}>
-                                      <div className="flex items-center justify-center">
-                                        <div className={`inline-flex items-center justify-center px-2 h-8 rounded-lg font-bold w-20 shrink-0 ${getPeriodColor(f.wavePeriod)} text-sm`}>
-                                          {f.wavePeriod}s
-                                        </div>
-                                      </div>
-                                    </td>
-                                  ))}
-                                </tr>
-                                {/* Nubosidad */}
-                                <tr className="hover:bg-slate-900/30">
-                                  <td className="px-3 py-3 font-medium text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-700 align-middle w-24 text-xs">
-                                    <div className="flex items-center gap-2 h-full">
-                                      <Cloud size={14} className="text-slate-500" /> Nubes
-                                    </div>
-                                  </td>
-                                  {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-2 py-2 text-center align-middle border-r border-slate-700 last:border-r-0`}>
-                                      <div className="flex items-center justify-center">
-                                        <div className={`inline-flex items-center justify-center px-2 h-8 rounded-lg font-bold w-20 shrink-0 ${getCloudCoverColor(f.cloudCover)} text-sm`}>
-                                          {f.cloudCover}%
-                                        </div>
-                                      </div>
-                                    </td>
-                                  ))}
-                                </tr>
-                                {/* Clima */}
-                                <tr className="hover:bg-slate-900/30">
-                                  <td className="px-3 py-3 font-medium text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-700 align-middle w-24 text-xs">
-                                    <div className="flex items-center gap-2 h-full">
-                                      <Thermometer size={14} className="text-orange-500" /> Temp.
-                                    </div>
-                                  </td>
-                                  {currentDay.forecast.map((f: any, i: number) => (
-                                    <td key={i} className={`px-2 py-2 text-center align-middle border-r border-slate-700 last:border-r-0`}>
-                                      <div className="flex items-center justify-center">
-                                        <div className="inline-flex items-center justify-center px-2 h-8 rounded-lg font-bold w-20 shrink-0 bg-orange-500/20 text-orange-300 text-sm">
-                                          {f.temperature}°
-                                        </div>
-                                      </div>
-                                    </td>
-                                  ))}
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full py-5 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl text-xl font-display font-extrabold uppercase tracking-wide italic flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-200 transition-all"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="animate-spin" size={24} />
+                          Consultando...
+                        </>
+                      ) : (
+                        <>
+                          <Search size={24} />
+                          Buscar el point
+                        </>
                       )}
+                    </button>
+                  </form>
+                </motion.div>
+              </div>
+            </main>
 
-                      {/* Disclaimer */}
-                      <div className="mb-6 p-3 bg-slate-800/20 border border-slate-700/30 rounded-lg flex items-center gap-3 text-[11px] text-slate-500 leading-tight">
-                        <AlertCircle size={14} className="text-yellow-600/50 shrink-0" />
-                        <p>
-                          <strong className="text-slate-400">Recomendación:</strong> Las condiciones son dinámicas. Volvé a consultar unas horas antes de tu sesión.
+            {/* Footer */}
+            <footer className="relative z-10 p-8 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">
+              © 2026 LA POSTA DEL POINT • Hecho con <span className="text-orange-500">♥</span> en la costa
+            </footer>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="results-view"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="min-h-screen bg-slate-50 pb-20"
+          >
+            {/* Results Header */}
+            <header className="bg-white border-b border-slate-200 sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('form')}>
+                <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center shadow-md rotate-3">
+                  <Waves className="text-white" size={18} />
+                </div>
+                <span className="text-xl font-display font-extrabold tracking-tighter text-slate-900 uppercase italic">LA POSTA DEL <span className="text-orange-600">POINT</span></span>
+              </div>
+              <button 
+                onClick={() => setView('form')}
+                className="flex items-center gap-2 text-sm font-extrabold text-slate-500 hover:text-orange-600 transition-colors uppercase tracking-tight"
+              >
+                <ArrowDown className="rotate-90" size={16} />
+                Nueva Consulta
+              </button>
+            </header>
+
+            <div className="max-w-4xl mx-auto px-4 py-6 space-y-6" ref={resultsRef}>
+              {/* Query Summary Card */}
+              <div className="bg-orange-600 rounded-[1.5rem] p-4 text-white shadow-xl shadow-orange-200 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                    <MapPin size={20} />
+                  </div>
+                  <div>
+                    <p className="text-xl font-display font-extrabold italic uppercase tracking-tight">{location}</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-4">
+                  <div className="bg-white/10 px-4 py-2 rounded-xl backdrop-blur-sm">
+                    <span className="text-[10px] font-extrabold uppercase block opacity-60">Deporte</span>
+                    <span className="text-sm font-bold">{sport}</span>
+                  </div>
+                  <div className="bg-white/10 px-4 py-2 rounded-xl backdrop-blur-sm">
+                    <span className="text-[10px] font-extrabold uppercase block opacity-60">Rango</span>
+                    <span className="text-sm font-bold">{startDate === endDate ? getDayOfWeek(startDate) : `${getDayOfWeek(startDate)} - ${getDayOfWeek(endDate)}`}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Greeting */}
+              {result?.greeting && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center max-w-2xl mx-auto"
+                >
+                  <p className="text-2xl font-display font-extrabold text-slate-900 italic uppercase tracking-tight leading-tight">
+                    {result.greeting}
+                  </p>
+                </motion.div>
+              )}
+
+              {/* Day Selection Tabs */}
+              {result?.dailyResults && result.dailyResults.length > 1 && (
+                <div className="flex justify-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+                  {result.dailyResults.map((day: any, idx: number) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedDayIndex(idx)}
+                      className={`px-6 py-3 rounded-2xl text-sm font-extrabold transition-all whitespace-nowrap ${selectedDayIndex === idx ? 'bg-orange-600 text-white shadow-lg shadow-orange-200' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
+                    >
+                      {day.dayName}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Active Day Content */}
+              <AnimatePresence mode="wait">
+                {result?.dailyResults?.[selectedDayIndex] && (
+                  <motion.div
+                    key={selectedDayIndex}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="space-y-8"
+                  >
+                    {/* Verdict Card */}
+                    <div className="bg-white rounded-[1.5rem] p-8 md:p-10 shadow-xl border border-slate-100 relative overflow-hidden">
+                      <div className="relative z-10 space-y-6">
+                        <div className="flex items-center gap-3 text-orange-600">
+                          <Target size={28} />
+                          <h2 className="text-2xl font-display font-extrabold italic tracking-tight">Veredicto la posta del point</h2>
+                        </div>
+                        <p className="text-lg md:text-xl text-slate-800 font-medium leading-relaxed">
+                          {result.dailyResults[selectedDayIndex].verdict}
                         </p>
                       </div>
+                    </div>
 
-                      {/* Ad Slot Middle */}
-                      <AdSlot className="h-32 w-full mb-8" />
+                    <AdSlot className="h-32" />
 
-                      {/* Map */}
-                      {currentSpots.length > 0 && (
-                        <div className="h-64 md:h-80 w-full rounded-xl overflow-hidden border border-slate-800 shadow-inner z-0 relative mb-8">
-                          <MapContainer
-                            key={`map-${selectedDayIndex}-${currentSpots[0].lat}-${currentSpots[0].lng}`}
-                            center={[currentSpots[0].lat, currentSpots[0].lng]}
-                            zoom={12}
-                            scrollWheelZoom={false}
-                            style={{ height: '100%', width: '100%', zIndex: 0 }}
-                          >
-                            <TileLayer
-                              attribution='&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-                              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                            />
-                            {currentSpots.map((spot: any, index: number) => (
-                              <Marker key={`${index}-${spot.lat}-${spot.lng}`} position={[spot.lat, spot.lng]}>
-                                <Popup>
-                                  <div className="font-sans p-1">
-                                    <h3 className="font-bold text-cyan-600 text-sm mb-1">{spot.name}</h3>
-                                    <p className="text-xs text-slate-700 m-0 leading-tight">{spot.description}</p>
+                    {/* Pronóstico detallado (Estado de las cosas) */}
+                    <EstadoDeLasCosas 
+                      forecast={result.dailyResults[selectedDayIndex].forecast} 
+                      waterTemp={result.dailyResults[selectedDayIndex].waterTemp}
+                      wetsuit={result.dailyResults[selectedDayIndex].wetsuit}
+                    />
+
+                    {/* Spots Grid */}
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-3 text-slate-900">
+                        <MapPin size={24} className="text-orange-600" />
+                        <h2 className="text-2xl font-display font-extrabold italic tracking-tight">Los points recomendados</h2>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 gap-6">
+                        {result.dailyResults[selectedDayIndex].bestSpots.map((window: any, wIdx: number) => (
+                          <div key={wIdx} className="bg-white rounded-[1.5rem] p-6 shadow-lg border border-slate-100 space-y-6">
+                            <div className="flex items-center gap-3 text-slate-400">
+                              <Calendar size={18} />
+                              <span className="text-sm font-extrabold uppercase tracking-widest">{window.timeWindow}</span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {window.spots.map((spot: any, sIdx: number) => (
+                                <div 
+                                  key={sIdx} 
+                                  onClick={() => {
+                                    setActiveSpot(spot);
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                  }}
+                                  className={`rounded-2xl p-4 border transition-all cursor-pointer relative group bg-orange-50 border-orange-200`}
+                                >
+                                  <div className="absolute top-4 right-4 bg-white px-2 py-1 rounded-lg shadow-sm flex items-center gap-1">
+                                    <Star size={12} className="text-orange-500 fill-orange-500" />
+                                    <span className="text-[10px] font-black text-slate-800">{spot.score}/10</span>
                                   </div>
-                                </Popup>
-                              </Marker>
-                            ))}
-                          </MapContainer>
-                        </div>
-                      )}
-                    </motion.div>
-                  );
-                })()}
+                                  <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black mb-3 shadow-sm transition-colors bg-orange-600 text-white`}>
+                                    {sIdx + 1}
+                                  </span>
+                                  <h4 className="text-lg font-display font-extrabold italic tracking-tight text-slate-900 mb-2">{spot.name}</h4>
+                                  <p className="text-sm text-slate-600 font-medium leading-snug mb-4">{spot.description}</p>
+                                  
+                                  <div className="pt-4 border-t border-orange-200">
+                                    <a 
+                                      href={`https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[10px] font-black uppercase text-orange-600 flex items-center gap-1 hover:underline"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Navigation size={12} /> Ver en Google Maps
+                                    </a>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
 
-                {/* Share Buttons (Bottom) */}
-                <div className="relative flex justify-center md:justify-start mb-8" ref={shareRefBottom}>
-                  <button
-                    onClick={() => setShareOpenBottom(!shareOpenBottom)}
-                    className="flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium transition-all border border-slate-700 shadow-lg"
-                  >
-                    <Share2 size={18} />
-                    Compartir informe
-                    <ChevronDown size={16} className={`transition-transform duration-200 ${shareOpenBottom ? 'rotate-180' : ''}`} />
-                  </button>
+                    <AdSlot className="h-32" />
 
-                  <AnimatePresence>
-                    {shareOpenBottom && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute bottom-full mb-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden"
-                      >
-                        <button
-                          onClick={() => {
-                            handleShare();
-                            setShareOpenBottom(false);
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800 transition-colors text-slate-200 text-sm"
-                        >
-                          {copied ? <Check size={18} className="text-emerald-400" /> : <Copy size={18} className="text-cyan-400" />}
-                          <span>{copied ? '¡Copiado!' : 'Copiar Link'}</span>
-                        </button>
-                        <a
-                          href={`https://api.whatsapp.com/send?text=${encodeURIComponent('¡Mirá el reporte de Albatros para mi próxima sesión! 🌊🏄‍♂️\n\n' + window.location.href)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={() => setShareOpenBottom(false)}
-                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800 transition-colors text-slate-200 text-sm border-t border-slate-800/50"
-                        >
-                          <Share2 size={18} className="text-[#25D366]" />
-                          <span>WhatsApp</span>
-                        </a>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                    {/* Map View */}
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-3 text-slate-900">
+                        <Navigation size={24} className="text-orange-600" />
+                        <h2 className="text-2xl font-display font-extrabold italic tracking-tight">Mapa de points</h2>
+                      </div>
+                      <MapView 
+                        spots={result.dailyResults[selectedDayIndex].bestSpots.flatMap((w: any) => w.spots)} 
+                        activeSpot={activeSpot}
+                        onSpotClick={(spot) => setActiveSpot(spot)}
+                      />
+                    </div>
 
-                {/* Ad Slot Bottom */}
-                <AdSlot className="h-24 w-full mt-auto" />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="bg-slate-900/30 backdrop-blur-md rounded-2xl border border-slate-800 border-dashed p-8 h-full flex flex-col items-center justify-center lg:justify-start lg:pt-40 text-center text-slate-500 min-h-[400px]"
-              >
-                <div className="bg-slate-800/50 p-4 rounded-full mb-4 border border-slate-700/50">
-                  <Wind size={32} className="text-slate-400" />
-                </div>
-                <h3 className="text-lg font-medium text-slate-300 mb-2">Esperando parámetros</h3>
-                <p className="max-w-sm text-sm text-slate-500">
-                  Completá los datos de tu sesión en el panel izquierdo para que Albatros cruce la información meteorológica y te recomiende el spot ideal.
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </section>
+                    <AdSlot className="h-32 mt-8" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      </main>
+      {/* Loading Overlay */}
+      <AnimatePresence>
+        {loading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-white/90 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center"
+          >
+            <div className="relative mb-8">
+              <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                className="w-32 h-32 border-4 border-slate-100 border-t-orange-600 rounded-full"
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Waves className="text-orange-600 animate-pulse" size={40} />
+              </div>
+            </div>
+            <h2 className="text-3xl font-display font-extrabold italic uppercase tracking-tight text-slate-900 mb-4">
+              Escaneando el horizonte...
+            </h2>
+            <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mb-8">
+              La posta del point está analizando vientos, mareas y swells para vos
+            </p>
+            <div className="w-full max-w-xs bg-slate-100 h-2 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                className="h-full bg-orange-600"
+              />
+            </div>
+            <p className="mt-4 text-orange-600 font-black text-sm">{Math.round(progress)}%</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Error Toast */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[110] w-full max-w-md px-4"
+          >
+            <div className="bg-red-600 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-4">
+              <AlertCircle size={24} className="shrink-0" />
+              <p className="text-sm font-bold leading-tight flex-1">{error}</p>
+              <button onClick={() => setError(null)} className="p-1 hover:bg-white/20 rounded-lg transition-colors">
+                <ArrowDown className="rotate-45" size={20} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

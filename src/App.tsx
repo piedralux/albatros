@@ -39,20 +39,27 @@ const MOCK_RESULT = {
       dayName: "Martes 3",
       waterTemp: 21,
       wetsuit: "3/2mm o Shorty",
+      weather: "Soleado",
+      airTemp: 24,
       forecast: [
-        { time: "Mañana (07:00)", windSpeed: 11, windDirection: "ENE", waveHeight: 0.9, waveDirection: "S", wavePeriod: 10, temperature: 17, cloudCover: 40 },
-        { time: "Mediodía (13:00)", windSpeed: 14, windDirection: "ENE", waveHeight: 0.8, waveDirection: "S", wavePeriod: 9, temperature: 19, cloudCover: 60 },
-        { time: "Tarde (18:00)", windSpeed: 18, windDirection: "ENE", waveHeight: 0.7, waveDirection: "S", wavePeriod: 9, temperature: 18, cloudCover: 80 }
+        { time: "Mañana (08:00)", windSpeed: 11, windDirection: "ENE", waveHeight: 0.9, waveDirection: "S", wavePeriod: 10, cloudCover: 40 },
+        { time: "Tarde (17:00)", windSpeed: 18, windDirection: "ENE", waveHeight: 0.7, waveDirection: "S", wavePeriod: 9, cloudCover: 80 }
       ],
       bestSpots: [
         {
-          timeWindow: "Jornada Completa",
+          timeWindow: "Mañana (Amanecer a 13:00)",
           spots: [
             { name: "Playa Grande (El Yacht)", description: "La escollera protege del viento ENE, manteniendo la cara de la ola más limpia.", lat: -38.0305, lng: -57.5318, score: 6 }
           ]
+        },
+        {
+          timeWindow: "Tarde (13:00 a Atardecer)",
+          spots: [
+            { name: "Playa Grande (Biología)", description: "Mejor con viento del N/NW y swell moderado.", lat: -38.0265, lng: -57.5315, score: 7 }
+          ]
         }
       ],
-      verdict: "El point del día para esta jornada es **Playa Grande (El Yacht)**. Con viento del ENE soplando moderado, la escollera sur es fundamental para filtrar el soplido y evitar que la ola se desarme. El swell del Sur entra con buen período (10s), lo que garantiza secciones con fuerza. Metete temprano antes de que el viento suba a 18 nudos y rompa la prolijidad."
+      verdict: "El point del día para esta jornada es **Playa Grande (Biología)**. El viento rotará al NE y se pondrá feo por la tarde, así que metete temprano. El swell del S con 10s garantiza rampas divertidas."
     }
   ]
 };
@@ -133,23 +140,23 @@ Reglas de Análisis (El Protocolo Surfpoint):
   - Miramar (Punta Viracho, El Muelle): Una alternativa de calidad superior cuando Mar del Plata está saturado o cerrando.
   - Waikiki: RECOMIENDA SOLO para Longboard o principiantes, o si el swell es masivo del Sur y es el único lugar que aguanta. No es un spot de performance para shortboard.
 - Resultados por Día: DEBES generar un análisis completo (pronóstico, spots y veredicto) para CADA UNO de los días dentro del rango de fechas solicitado.
-- Horario Lógico (CRÍTICO): El análisis DEBE dividirse exactamente en 3 franjas horarias:
-  1. Mañana: 07:00 a 12:00 (Referencia: 08:00)
-  2. Mediodía: 12:00 a 16:00 (Referencia: 13:00)
-  3. Tarde: 16:00 a 20:00 (Referencia: 18:00)
-- "forecast": Array con el pronóstico por horas de ESE día. DEBE tener exactamente 3 objetos con "time" siendo: "Mañana (08:00)", "Mediodía (13:00)" y "Tarde (18:00)".
-- "bestSpots": Array de spots recomendados para ESE día. DEBE tener exactamente 3 objetos con "timeWindow" siendo: "Mañana (07:00 a 12:00)", "Mediodía (12:00 a 16:00)" y "Tarde (16:00 a 20:00)".
+- Horario Lógico (CRÍTICO): El análisis DEBE dividirse exactamente en 2 franjas horarias:
+  1. Mañana: Desde el amanecer hasta las 13:00 (Referencia: 08:00)
+  2. Tarde: Desde las 13:00 hasta el anochecer (Referencia: 17:00)
+- Filtro de Tiempo (CRÍTICO): Si la consulta se realiza después de las 14:00 (hora actual proporcionada), NO devuelvas información de la "Mañana" para el día de hoy, ya que ya pasó. Empieza directamente con la "Tarde".
+- "forecast": Array con el pronóstico por horas de ESE día. DEBE tener exactamente 2 objetos con "time" siendo: "Mañana (08:00)" y "Tarde (17:00)". NO incluyas la temperatura en el forecast detallado.
+- "bestSpots": Array de spots recomendados para ESE día. DEBE tener exactamente 2 objetos con "timeWindow" siendo: "Mañana (Amanecer a 13:00)" y "Tarde (13:00 a Atardecer)".
 - Lógica de Spots Específicos (CRÍTICO):
   - Playa Grande (Mar del Plata): 
     - "El Yacht" es mejor con vientos del E, NE o SE suave, ya que la escollera protege. Es para un nivel más avanzado.
     - "Biología" es mejor cuando el viento es del N, NW o W (offshore) y el swell no es masivo. Es más amigable y suele estar más limpio si el Yacht está picado por viento cruzado.
     - Si el viento es del Norte, RECOMIENDA Biología sobre el Yacht. Si el viento es del Este/Sudeste, el Yacht suele tener mejor forma por el reparo de la piedra.
-- Veredicto (CRÍTICO): El veredicto debe ser una recomendación experta, DECISIVA y SEGURA para la jornada completa. 
+- Veredicto (CRÍTICO): El veredicto debe ser una recomendación experta, CORTA Y AL PIE. 
   1. Identifica el MEJOR spot del día.
   2. DEBES empezar el veredicto nombrando el spot ganador y resaltándolo en negrita usando Markdown (ej: "El point del día para esta jornada es **Playa Grande (El Yacht)**...").
-  3. Explica detalladamente POR QUÉ es el mejor, mencionando vientos, swells y períodos específicos.
+  3. No te extiendas en detalles técnicos innecesarios (como grados exactos del viento). Lo que le interesa al usuario es si va a cambiar el viento y se va a poner feo, o si se va a poner bueno.
   4. Si las condiciones son malas, ADVIÉRTELO claramente.
-- Temperatura del Agua y Wetsuit: DEBES estimar la temperatura del agua y recomendar el traje adecuado (ej: 3/2mm, 4/3mm, shorty).
+- Temperatura y Clima: DEBES estimar la temperatura del aire ("airTemp") y el estado del clima ("weather", ej: "Soleado", "Nublado", "Lluvia", "Tormenta"). También estima la temperatura del agua y recomienda el traje adecuado.
 - Fuentes de Consulta (OBLIGATORIO): DEBES usar Google Search para obtener datos de Windguru, Surfline, Windy, estadodelmar.com.ar y lineup.surf.
 - Consistencia: Los reportes para la misma fecha y lugar deben ser consistentes. Usa los datos reales encontrados en la búsqueda.
 - Tono: Técnico pero cercano. Un lenguaje de "parador de playa" pero con la precisión de un radar náutico.
@@ -162,8 +169,10 @@ El output para el usuario debe ser un objeto JSON que contenga:
    - "dayName": Nombre del día (ej: "Jueves 5")
    - "waterTemp": Temperatura del agua estimada (ej: 19)
    - "wetsuit": Recomendación de traje (ej: "3/2mm")
-   - "forecast": Array con el pronóstico por horas de ESE día. DEBE tener exactamente 3 objetos correspondientes a: "Mañana (08:00)", "Mediodía (13:00)" y "Tarde (18:00)".
-   - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. DEBE tener exactamente 3 objetos con "timeWindow" siendo: "Mañana (07:00 a 12:00)", "Mediodía (12:00 a 16:00)" y "Tarde (16:00 a 20:00)".
+   - "weather": Estado del clima (ej: "Soleado", "Parcialmente Nublado", "Nublado", "Lluvia")
+   - "airTemp": Temperatura del aire estimada (ej: 22)
+   - "forecast": Array con el pronóstico por horas de ESE día. DEBE tener exactamente 2 objetos correspondientes a: "Mañana (08:00)" y "Tarde (17:00)".
+   - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. DEBE tener exactamente 2 objetos con "timeWindow" siendo: "Mañana (Amanecer a 13:00)" y "Tarde (13:00 a Atardecer)".
    - "verdict": Veredicto experto y decidido.`;
 
 const TimePicker = ({ value, onChange, minTime, className = "" }: { value: string, onChange: (val: string) => void, minTime?: string, className?: string }) => {
@@ -410,137 +419,169 @@ const getCloudColor = (cover: number) => {
   return { bg: 'bg-slate-800', text: 'text-white' }; // Nublado
 };
 
-const InfoAgua = ({ waterTemp, wetsuit }: { waterTemp: number, wetsuit: string }) => (
-  <div className="bg-slate-50/60 flex items-center justify-around gap-4 border-t border-slate-100/50 py-6 px-8">
-    <div className="flex flex-col items-center gap-1.5">
-      <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Temperatura Agua</span>
-      <div className="flex items-center gap-2 text-blue-700 font-black text-2xl">
-        <Thermometer size={24} className="text-blue-500" />
-        {waterTemp}°C
+const InfoAgua = ({ waterTemp, wetsuit, weather, airTemp }: { waterTemp: number, wetsuit: string, weather?: string, airTemp?: number }) => {
+  const getWeatherIcon = (condition: string = "") => {
+    const c = condition.toLowerCase();
+    if (c.includes('sol') || c.includes('despejado')) return <Sun size={24} className="text-yellow-500" />;
+    if (c.includes('lluvia') || c.includes('tormenta')) return <CloudRain size={24} className="text-blue-400" />;
+    if (c.includes('nublado')) return <Cloud size={24} className="text-slate-400" />;
+    return <Sun size={24} className="text-yellow-500" />;
+  };
+
+  return (
+    <div className="bg-slate-50/60 grid grid-cols-2 md:grid-cols-4 items-center gap-4 border-t border-slate-100/50 py-6 px-8">
+      <div className="flex flex-col items-center gap-1.5">
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Clima</span>
+        <div className="flex items-center gap-2 text-slate-900 font-black text-2xl">
+          {getWeatherIcon(weather)}
+          <span className="text-lg md:text-xl truncate max-w-[100px]">{weather || 'Soleado'}</span>
+        </div>
+      </div>
+      
+      <div className="flex flex-col items-center gap-1.5">
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Temp. Aire</span>
+        <div className="flex items-center gap-2 text-orange-600 font-black text-2xl">
+          <Thermometer size={24} className="text-orange-500" />
+          {airTemp || 22}°C
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center gap-1.5">
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Temp. Agua</span>
+        <div className="flex items-center gap-2 text-blue-700 font-black text-2xl">
+          <Droplet size={24} className="text-blue-500" />
+          {waterTemp}°C
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center gap-1.5">
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Traje</span>
+        <div className="flex items-center gap-2 text-orange-700 font-black text-xl md:text-2xl">
+          <Shirt size={24} className="text-orange-500" />
+          <span className="truncate max-w-[120px]">{wetsuit}</span>
+        </div>
       </div>
     </div>
-    <div className="w-px h-12 bg-slate-200/60" />
-    <div className="flex flex-col items-center gap-1.5">
-      <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Traje Recomendado</span>
-      <div className="flex items-center gap-2 text-orange-700 font-black text-2xl">
-        <Shirt size={24} className="text-orange-500" />
-        {wetsuit}
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 const EstadoDeLasCosas = ({ forecast, astronomy }: { forecast: any[], astronomy: any }) => {
+  const [isOpen, setIsOpen] = useState(false);
   if (!forecast || forecast.length === 0) return null;
 
-  const periods = forecast.slice(0, 3);
+  const periods = forecast;
 
   const getTimeRange = (timeLabel: string) => {
-    if (timeLabel.includes('Mañana')) return '07:00 a 12:00';
-    if (timeLabel.includes('Mediodía')) return '12:00 a 16:00';
-    if (timeLabel.includes('Tarde')) return '16:00 a 20:00';
+    if (timeLabel.includes('Mañana')) return 'Amanecer a 13:00';
+    if (timeLabel.includes('Tarde')) return '13:00 a Atardecer';
     return '';
   };
 
   return (
     <div className="bg-white rounded-[1.5rem] overflow-hidden border border-slate-100 shadow-xl">
-      <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full p-6 border-b border-slate-100 flex items-center justify-between hover:bg-slate-50 transition-colors"
+      >
         <div className="flex items-center gap-3">
           <Activity className="text-orange-600" size={24} />
           <h3 className="text-xl font-display font-extrabold italic tracking-tight text-slate-900">Pronóstico detallado</h3>
         </div>
-        <div className="flex items-center gap-4 text-sm font-bold text-slate-500">
-          <span className="text-sm uppercase tracking-widest text-slate-400">Sol:</span>
-          <div className="flex items-center gap-1">
-            <Sun size={16} className="text-yellow-500" />
-            <span>{astronomy.sunrise}</span>
+        <div className="flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-4 text-sm font-bold text-slate-500">
+            <span className="text-sm uppercase tracking-widest text-slate-400">Sol:</span>
+            <div className="flex items-center gap-1">
+              <Sun size={16} className="text-yellow-500" />
+              <span>{astronomy.sunrise}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Moon size={16} className="text-indigo-400" />
+              <span>{astronomy.sunset}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <Moon size={16} className="text-indigo-400" />
-            <span>{astronomy.sunset}</span>
-          </div>
+          {isOpen ? <ChevronUp className="text-slate-400" /> : <ChevronDown className="text-slate-400" />}
         </div>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="text-xs font-extrabold uppercase tracking-widest text-slate-500 border-b border-slate-200 bg-slate-100">
-              <th className="px-6 py-4">HORA</th>
-              {periods.map((p, i) => (
-                <th key={i} className="px-6 py-4 text-center">
-                  <div className="text-sm text-slate-900 font-black uppercase">{p.time}</div>
-                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{getTimeRange(p.time)}</div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y-2 divide-slate-100">
-            <tr>
-              <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
-                <Wind size={16} className="text-orange-600" /> Viento
-              </td>
-              {periods.map((p, i) => (
-                <td key={i} className="px-6 py-2 text-center">
-                  <div className={`inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base ${i === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-yellow-50 text-yellow-700'}`}>
-                    {p.windSpeed} <Navigation size={12} style={{ transform: `rotate(${getDirectionRotation(p.windDirection)}deg)` }} /> {p.windDirection}
-                  </div>
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
-                <Waves size={16} className="text-orange-600" /> Olas
-              </td>
-              {periods.map((p, i) => (
-                <td key={i} className="px-6 py-2 text-center">
-                  <div className="inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base bg-cyan-50 text-cyan-700">
-                    {p.waveHeight} <Navigation size={12} style={{ transform: `rotate(${getDirectionRotation(p.waveDirection)}deg)` }} /> {p.waveDirection}
-                  </div>
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
-                <Activity size={16} className="text-orange-600" /> Período
-              </td>
-              {periods.map((p, i) => (
-                <td key={i} className="px-6 py-2 text-center">
-                  <div className="inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base bg-blue-50 text-blue-700">
-                    {p.wavePeriod}s
-                  </div>
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
-                <Cloud size={16} className="text-orange-600" /> Nubes
-              </td>
-              {periods.map((p, i) => {
-                const colors = getCloudColor(p.cloudCover);
-                return (
-                  <td key={i} className="px-6 py-2 text-center">
-                    <div className={`inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base ${colors.bg} ${colors.text}`}>
-                      {p.cloudCover}%
-                    </div>
-                  </td>
-                );
-              })}
-            </tr>
-            <tr>
-              <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
-                <Thermometer size={16} className="text-orange-600" /> Temp.
-              </td>
-              {periods.map((p, i) => (
-                <td key={i} className="px-6 py-2 text-center">
-                  <div className={`inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base ${i === 0 ? 'bg-orange-50 text-orange-600' : 'bg-orange-100 text-orange-700'}`}>
-                    {p.temperature}°
-                  </div>
-                </td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      </button>
+      
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="text-xs font-extrabold uppercase tracking-widest text-slate-500 border-b border-slate-200 bg-slate-100">
+                    <th className="px-6 py-4">HORA</th>
+                    {periods.map((p, i) => (
+                      <th key={i} className="px-6 py-4 text-center">
+                        <div className="text-sm text-slate-900 font-black uppercase">{p.time}</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{getTimeRange(p.time)}</div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y-2 divide-slate-100">
+                  <tr>
+                    <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+                      <Wind size={16} className="text-orange-600" /> Viento
+                    </td>
+                    {periods.map((p, i) => (
+                      <td key={i} className="px-6 py-2 text-center">
+                        <div className={`inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base ${i === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-yellow-50 text-yellow-700'}`}>
+                          {p.windSpeed} <Navigation size={12} style={{ transform: `rotate(${getDirectionRotation(p.windDirection)}deg)` }} /> {p.windDirection}
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+                      <Waves size={16} className="text-orange-600" /> Olas
+                    </td>
+                    {periods.map((p, i) => (
+                      <td key={i} className="px-6 py-2 text-center">
+                        <div className="inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base bg-cyan-50 text-cyan-700">
+                          {p.waveHeight} <Navigation size={12} style={{ transform: `rotate(${getDirectionRotation(p.waveDirection)}deg)` }} /> {p.waveDirection}
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+                      <Activity size={16} className="text-orange-600" /> Período
+                    </td>
+                    {periods.map((p, i) => (
+                      <td key={i} className="px-6 py-2 text-center">
+                        <div className="inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base bg-blue-50 text-blue-700">
+                          {p.wavePeriod}s
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+                      <Cloud size={16} className="text-orange-600" /> Nubes
+                    </td>
+                    {periods.map((p, i) => {
+                      const colors = getCloudColor(p.cloudCover);
+                      return (
+                        <td key={i} className="px-6 py-2 text-center">
+                          <div className={`inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base ${colors.bg} ${colors.text}`}>
+                            {p.cloudCover}%
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -659,7 +700,7 @@ export default function App() {
   const [startDate, setStartDate] = useState(searchParams.get('sDate') || getTodayDate());
   const [endDate, setEndDate] = useState(searchParams.get('eDate') || getTodayDate());
   const [sport, setSport] = useState(searchParams.get('sport') || 'Surf');
-  const [mobility, setMobility] = useState(Number(searchParams.get('mob')) || 20);
+  const [mobility, setMobility] = useState(Number(searchParams.get('mob')) || 15);
   const [objective, setObjective] = useState(searchParams.get('obj') || '');
   
   const suggestions = [
@@ -933,7 +974,8 @@ export default function App() {
 
 Instrucción para el modelo: Analizá cada día del rango solicitado. 
 REGLA DE ORO: El análisis debe cubrir la JORNADA COMPLETA, desde el amanecer hasta el atardecer.
-El veredicto debe centrarse en el mejor momento y lugar del día.
+Si hoy es ${now.toLocaleDateString('es-AR')} y la hora actual es después de las 14:00, NO devuelvas info de la "Mañana" para hoy.
+El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen buenas o feas.
 
 🏄 Deporte: ${sport}
 🚗 Movilidad: Hasta ${mobility}km
@@ -983,22 +1025,23 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                     dayName: { type: Type.STRING, description: "Nombre del día (ej: Martes 3)" },
                     waterTemp: { type: Type.NUMBER, description: "Temperatura del agua estimada en °C" },
                     wetsuit: { type: Type.STRING, description: "Recomendación de traje (ej: 3/2mm)" },
+                    weather: { type: Type.STRING, description: "Estado del clima (ej: Soleado, Nublado)" },
+                    airTemp: { type: Type.NUMBER, description: "Temperatura del aire estimada en °C" },
                     forecast: {
                       type: Type.ARRAY,
                       description: "Pronóstico detallado por horas para este día. Debe incluir las franjas horarias que coincidan con el rango solicitado.",
                       items: {
                         type: Type.OBJECT,
                         properties: {
-                          time: { type: Type.STRING, description: "Período y Hora. DEBE ser exactamente uno de: 'Mañana (08:00)', 'Mediodía (13:00)', 'Tarde (18:00)'" },
+                          time: { type: Type.STRING, description: "Período y Hora. DEBE ser exactamente uno de: 'Mañana (08:00)', 'Tarde (17:00)'" },
                           windSpeed: { type: Type.NUMBER, description: "Velocidad del viento en nudos" },
                           windDirection: { type: Type.STRING, description: "Dirección del viento (ej: NW, S, SE)" },
                           waveHeight: { type: Type.NUMBER, description: "Altura de la ola en metros" },
                           waveDirection: { type: Type.STRING, description: "Dirección de la ola (ej: S, SE, E)" },
                           wavePeriod: { type: Type.NUMBER, description: "Período de la ola en segundos" },
-                          temperature: { type: Type.NUMBER, description: "Temperatura ambiente en °C" },
                           cloudCover: { type: Type.NUMBER, description: "Porcentaje de nubosidad (0 a 100)" }
                         },
-                        required: ["time", "windSpeed", "windDirection", "waveHeight", "waveDirection", "wavePeriod", "temperature", "cloudCover"]
+                        required: ["time", "windSpeed", "windDirection", "waveHeight", "waveDirection", "wavePeriod", "cloudCover"]
                       }
                     },
                     bestSpots: {
@@ -1007,7 +1050,7 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                       items: {
                         type: Type.OBJECT,
                         properties: {
-                          timeWindow: { type: Type.STRING, description: "Franja horaria. DEBE ser exactamente uno de: 'Mañana (07:00 a 12:00)', 'Mediodía (12:00 a 16:00)', 'Tarde (16:00 a 20:00)'" },
+                          timeWindow: { type: Type.STRING, description: "Franja horaria. DEBE ser exactamente uno de: 'Mañana (Amanecer a 13:00)', 'Tarde (13:00 a Atardecer)'" },
                           spots: {
                             type: Type.ARRAY,
                             description: "Spots recomendados en este horario, ordenados por calidad.",
@@ -1029,7 +1072,7 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                     },
                     verdict: { type: Type.STRING, description: "Veredicto experto y decidido." }
                   },
-                  required: ["date", "dayName", "waterTemp", "wetsuit", "forecast", "bestSpots", "verdict"]
+                  required: ["date", "dayName", "waterTemp", "wetsuit", "weather", "airTemp", "forecast", "bestSpots", "verdict"]
                 }
               }
             },
@@ -1187,7 +1230,7 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                   <form onSubmit={handleSubmit} className="space-y-6">
                     {/* CIUDAD */}
                     <div className="space-y-2 relative">
-                      <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">CIUDAD</label>
+                      <label className="text-[14px] font-bold text-slate-400 ml-1">Ciudad (donde te vas a meter al mar)</label>
                       <div className="relative">
                         <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500" size={20} />
                         <input
@@ -1199,7 +1242,7 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                             setShowSuggestions(true);
                           }}
                           onFocus={() => setShowSuggestions(true)}
-                          className="w-full pl-12 pr-4 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-orange-500 transition-all text-lg font-semibold text-slate-800 shadow-sm"
+                          className="w-full pl-12 pr-4 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-orange-500 transition-all text-[16px] font-normal text-slate-800 shadow-sm"
                           required
                         />
                         {showSuggestions && location && suggestions.length > 0 && (
@@ -1225,25 +1268,25 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                     {/* Fechas */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">Desde</label>
+                        <label className="text-[14px] font-bold text-slate-400 ml-1">Desde</label>
                         <input
                           type="date"
                           value={startDate}
                           min={getTodayDate()}
                           onChange={(e) => setStartDate(e.target.value)}
-                          className="w-full px-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-orange-500 text-sm font-bold text-slate-800 [color-scheme:light]"
+                          className="w-full px-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-orange-500 text-[16px] font-normal text-slate-800 [color-scheme:light]"
                           required
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">Hasta</label>
+                        <label className="text-[14px] font-bold text-slate-400 ml-1">Hasta</label>
                         <input
                           type="date"
                           value={endDate}
                           min={startDate || getTodayDate()}
                           max={getMaxEndDate(startDate)}
                           onChange={(e) => setEndDate(e.target.value)}
-                          className="w-full px-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-orange-500 text-sm font-bold text-slate-800 [color-scheme:light]"
+                          className="w-full px-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-orange-500 text-[16px] font-normal text-slate-800 [color-scheme:light]"
                           required
                         />
                       </div>
@@ -1252,14 +1295,14 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                     {/* Deporte y Movilidad */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                       <div className="space-y-3">
-                        <label className="text-sm font-extrabold text-slate-400 uppercase tracking-widest ml-1">Deporte</label>
+                        <label className="text-[14px] font-bold text-slate-400 ml-1">Deporte</label>
                         <div className="grid grid-cols-3 gap-2 bg-slate-200/60 p-1.5 rounded-2xl">
                           {['Surf', 'Bodyboard', 'Kitesurf', 'Windsurf', 'SUP', 'Wingfoil'].map((s) => (
                             <button
                               key={s}
                               type="button"
                               onClick={() => setSport(s)}
-                              className={`py-3 rounded-xl text-[10px] md:text-xs font-extrabold transition-all border-2 ${
+                              className={`py-3 rounded-xl text-[16px] font-normal transition-all border-2 ${
                                 sport === s 
                                   ? 'bg-white text-orange-600 border-white shadow-md scale-[1.02]' 
                                   : 'bg-white/60 text-slate-500 border-transparent hover:bg-white/80 hover:border-slate-300 hover:text-slate-700'
@@ -1272,13 +1315,13 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                       </div>
                       <div className="space-y-3">
                         <div className="flex flex-col mb-1">
-                          <label className="text-sm font-extrabold text-slate-400 uppercase tracking-widest ml-1">Movilidad</label>
-                          <p className="text-xs text-slate-500 font-medium ml-1 mt-1">¿Cuán lejos estás dispuesto a moverte por las olas?</p>
+                          <label className="text-[14px] font-bold text-slate-400 ml-1">Movilidad</label>
+                          <p className="text-[14px] text-slate-500 font-normal ml-1 mt-1">¿Cuánto te moverías si no hay olas cerca?</p>
                         </div>
                         <div className="px-2 relative h-8 flex items-center mt-2">
                           {/* Tick marks for affordance - aligned with thumb positions */}
                           <div className="absolute left-[13px] right-[13px] inset-0 flex justify-between pointer-events-none z-20 items-center">
-                            {[0, 10, 20, 30, 40, 50].map((val) => (
+                            {[0, 15, 30, 45].map((val) => (
                               <div 
                                 key={val} 
                                 className={`w-2 h-2 rounded-full bg-slate-400/60 border border-white/20 transition-opacity duration-200 ${mobility === val ? 'opacity-0' : 'opacity-100'}`} 
@@ -1289,16 +1332,16 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                           <input
                             type="range"
                             min="0"
-                            max="50"
-                            step="10"
+                            max="45"
+                            step="15"
                             value={mobility}
                             onChange={(e) => setMobility(Number(e.target.value))}
                             className="relative z-10 w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
                           />
                         </div>
                           
-                        <div className="flex justify-between text-[10px] font-black text-slate-400 mt-4 px-2">
-                          {['0', '10', '20', '30', '40', '50'].map(val => (
+                        <div className="flex justify-between text-[16px] font-normal text-slate-400 mt-4 px-2">
+                          {['0', '15', '30', '45'].map(val => (
                             <div key={val} className="w-4 flex justify-center">
                               <span className={`transition-all duration-300 whitespace-nowrap ${mobility === Number(val) ? 'text-orange-600 scale-110' : ''}`}>
                                 {val}KM
@@ -1360,15 +1403,15 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
               <div className="w-24" /> {/* Spacer to balance the layout */}
             </header>
 
-            <div className="max-w-4xl mx-auto px-4 py-6 space-y-10" ref={resultsRef}>
+            <div className="max-w-4xl mx-auto px-4 py-12 space-y-12" ref={resultsRef}>
               {/* Greeting */}
               {result?.greeting && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-center space-y-2"
+                  className="text-center px-4"
                 >
-                  <h2 className="text-2xl md:text-4xl font-display font-extrabold italic tracking-tight text-slate-900 leading-tight">
+                  <h2 className="text-xl md:text-3xl font-display font-extrabold italic tracking-tight text-slate-900 leading-tight">
                     {result.greeting}
                   </h2>
                 </motion.div>
@@ -1403,8 +1446,8 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                     <div className="bg-white rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-2 border-slate-100 relative overflow-hidden">
                       <div className="p-8 md:p-10 space-y-8">
                         <div className="flex items-center gap-3 text-orange-600">
-                          <Target size={32} />
-                          <h2 className="text-3xl md:text-4xl font-display font-extrabold italic tracking-tight">La posta</h2>
+                          <Target size={28} />
+                          <h2 className="text-2xl md:text-3xl font-display font-extrabold italic tracking-tight">La posta</h2>
                         </div>
                         <div className="text-base md:text-lg text-slate-800 font-medium leading-relaxed markdown-body">
                           <ReactMarkdown>{result.dailyResults[selectedDayIndex].verdict}</ReactMarkdown>
@@ -1415,14 +1458,16 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                       <InfoAgua 
                         waterTemp={result.dailyResults[selectedDayIndex].waterTemp}
                         wetsuit={result.dailyResults[selectedDayIndex].wetsuit}
+                        weather={result.dailyResults[selectedDayIndex].weather}
+                        airTemp={result.dailyResults[selectedDayIndex].airTemp}
                       />
                     </div>
 
                     {/* Spots Grid (Moved up) */}
                     <div className="space-y-6">
                       <div className="flex items-center gap-3 text-slate-900">
-                        <MapPin size={24} className="text-orange-600" />
-                        <h2 className="text-2xl font-display font-extrabold italic tracking-tight">Los points del día</h2>
+                        <MapPin size={20} className="text-orange-600" />
+                        <h2 className="text-xl font-display font-extrabold italic tracking-tight">Los points del día</h2>
                       </div>
                       
                       <div className="grid grid-cols-1 gap-6">

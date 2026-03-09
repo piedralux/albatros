@@ -30,52 +30,103 @@ let DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 const MOCK_RESULT = {
-  greeting: "¡Aloha, rider! Te compartimos un análisis de demostración (la API está saturada) para tu sesión.",
+  greeting: "¡Aloha, rider! Te compartimos un análisis de demostración para tu sesión.",
   astronomy: { sunrise: "06:15", sunset: "19:30" },
   dailyResults: [
     {
       date: "2026-03-03",
       dayName: "Martes 3",
+      waterTemp: 21,
+      wetsuit: "3/2mm o Shorty",
       forecast: [
-        { time: "09:00", windSpeed: 8, windDirection: "NW", waveHeight: 1.2, waveDirection: "SE", wavePeriod: 11, temperature: 18, cloudCover: 5 },
-        { time: "15:00", windSpeed: 12, windDirection: "WNW", waveHeight: 1.3, waveDirection: "SE", wavePeriod: 11, temperature: 22, cloudCover: 25 }
+        { time: "Mañana (07:00)", windSpeed: 11, windDirection: "ENE", waveHeight: 0.9, waveDirection: "S", wavePeriod: 10, temperature: 17, cloudCover: 40 },
+        { time: "Mediodía (13:00)", windSpeed: 14, windDirection: "ENE", waveHeight: 0.8, waveDirection: "S", wavePeriod: 9, temperature: 19, cloudCover: 60 },
+        { time: "Tarde (18:00)", windSpeed: 18, windDirection: "ENE", waveHeight: 0.7, waveDirection: "S", wavePeriod: 9, temperature: 18, cloudCover: 80 }
       ],
       bestSpots: [
         {
-          timeWindow: "Mañana (08:00 a 12:00)",
+          timeWindow: "Jornada Completa",
           spots: [
-            { name: "Playa Grande", description: "Olas consistentes, viento offshore suave.", lat: -38.0285, lng: -57.5285 }
+            { name: "Playa Grande (El Yacht)", description: "La escollera protege del viento ENE, manteniendo la cara de la ola más limpia.", lat: -38.0305, lng: -57.5318, score: 6 }
           ]
         }
       ],
-      verdict: "El point del día es Playa Grande: condiciones épicas con viento offshore suave y swell consistente."
-    },
-    {
-      date: "2026-03-04",
-      dayName: "Miércoles 4",
-      forecast: [
-        { time: "09:00", windSpeed: 15, windDirection: "S", waveHeight: 1.5, waveDirection: "E", wavePeriod: 10, temperature: 17, cloudCover: 90 },
-        { time: "15:00", windSpeed: 18, windDirection: "S", waveHeight: 1.8, waveDirection: "E", wavePeriod: 9, temperature: 19, cloudCover: 100 }
-      ],
-      bestSpots: [
-        {
-          timeWindow: "Tarde (13:00 a 17:00)",
-          spots: [
-            { name: "Waikiki", description: "Reparo del viento sur, ideal para longboard.", lat: -38.0575, lng: -57.5375 }
-          ]
-        }
-      ],
-      verdict: "El point del día es Waikiki: es el único lugar con reparo real del viento sur para que la ola no se rompa."
+      verdict: "El point del día para esta jornada es **Playa Grande (El Yacht)**. Con viento del ENE soplando moderado, la escollera sur es fundamental para filtrar el soplido y evitar que la ola se desarme. El swell del Sur entra con buen período (10s), lo que garantiza secciones con fuerza. Metete temprano antes de que el viento suba a 18 nudos y rompa la prolijidad."
     }
   ]
 };
 
-const SYSTEM_INSTRUCTION = `Rol: Sos La posta del point, un asesor experto en deportes de tabla marítimos (Surf, Bodyboard, Windsurf, Kitesurf, SUP, Wingfoil). Tu rango de acción es EXCLUSIVAMENTE la costa atlántica de la provincia de Buenos Aires y Río Negro, Argentina, abarcando desde San Clemente del Tuyú hasta Carmen de Patagones. NO recomiendes spots en ríos, lagos ni lagunas.
+const SYSTEM_INSTRUCTION = `Rol: Sos Surfpoint, un asesor experto en deportes de tabla marítimos (Surf, Bodyboard, Windsurf, Kitesurf, SUP, Wingfoil). Tu rango de acción es EXCLUSIVAMENTE la costa atlántica de la provincia de Buenos Aires y Río Negro, Argentina, abarcando desde San Clemente del Tuyú hasta Carmen de Patagones. NO recomiendes spots en ríos, lagos ni lagunas.
 
-Reglas de Análisis (El Protocolo La posta del point):
-- Brevedad (CRÍTICO): Para reducir el tiempo de respuesta, mantén las descripciones muy breves (máximo 15 palabras por spot). No generes texto de relleno.
-- Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE SOBRE EL AGUA, A 50 METROS DE LA ORILLA. NUNCA EN LA TIERRA FIRME, NUNCA EN LA CIUDAD, NUNCA EN EL CAMPO. SIEMPRE EN EL AGUA AZUL. Los usuarios se quejan de que los pines caen en el pasto o en la calle. MUY IMPORTANTE: Verifica mentalmente la latitud y longitud. Si la coordenada cae en tierra firme, AJUSTA la coordenada moviéndola hacia el mar (por ejemplo, en la costa atlántica de Buenos Aires, el mar está al Este y Sur, así que suma a la longitud para ir al Este o resta a la latitud para ir al Sur). Sé extremadamente preciso con los decimales (ej: -38.0345, -57.5321). EL PIN DEBE CAER EN EL MAR, NO EN LA ARENA.
+Reglas de Análisis (El Protocolo Surfpoint):
+- Brevedad (EXTREMA): Para reducir el tiempo de respuesta, mantén las descripciones muy breves (máximo 10 palabras por spot). No generes texto de relleno. El tiempo es oro.
+- Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE SOBRE LA LÍNEA DE COSTA (LA ARENA), EN EL PUNTO EXACTO DONDE SE ENCUENTRA LA ENTRADA AL MAR O EL PARADOR. NUNCA EN EL AGUA, NUNCA EN EL MALECÓN/ESCOLLERA, NUNCA EN LA CIUDAD. 
+  Usa esta BASE DE DATOS DE SPOTS para máxima precisión. SI EL SPOT ESTÁ EN ESTA LISTA, ES OBLIGATORIO USAR ESTAS COORDENADAS EXACTAS:
+  - Mar del Plata:
+    - Playa Grande (Biología): -38.0258, -57.5306
+    - Playa Grande (El Yacht): -38.0305, -57.5318
+    - Waikiki: -38.0694, -57.5461
+    - Serena Sur: -38.0855, -57.5585
+    - La Paloma: -38.0895, -57.5615
+    - Varese: -38.0125, -57.5365
+    - Cardiel: -37.9785, -57.5425
+    - Estrada: -37.9655, -57.5455
+    - Sun Rider: -37.9555, -57.5485
+    - Mariano: -38.0655, -57.5465
+    - Honu Beach: -38.0775, -57.5515
+    - El Faro: -38.0825, -57.5545
+  - Chapadmalal:
+    - Luna Roja: -38.1585, -57.6445
+    - Cruz del Sur: -38.1655, -57.6525
+    - RCT: -38.1755, -57.6625
+  - Miramar:
+    - Punta Viracho: -38.2855, -57.8225
+    - El Muelle: -38.2755, -57.8325
+    - Pompeya: -38.2655, -57.8425
+  - Necochea:
+    - Escollera Necochea: -38.5855, -58.7025
+    - El Caño: -38.5955, -58.7125
+  - El usuario usará esto para navegar con Google Maps, por lo que la precisión es vital. Sé extremadamente preciso con los decimales.
+- Criterio de Puntuación (CRÍTICO): Sé EXTREMADAMENTE exigente con el puntaje (score 1-10). No regales puntos.
+  - Surf & Bodyboard:
+    - 10 (ÉPICO): Tubos perfectos, >2m, viento offshore suave, período >12s.
+    - 9 (CASI PERFECTO): Muy prolijo, >2m, offshore, consistente.
+    - 8 (INCREÍBLE): Limpio, 1.5m a 2m, secciones largas, offshore o calma.
+    - 7 (MUY BUENO): Limpio, 1m a 1.5m, algunas secciones, viento suave.
+    - 6 (SURFEABLE / OK): 0.5m a 1m, algo de viento cruzado o choppy, pero con forma.
+    - 5 (MEDIOCRE): Olas chicas (<0.5m) o desordenadas, pero se puede barrenar algo.
+    - 4 (POBRE): Cerrando (mucha espuma), viento onshore fuerte, o casi plato.
+    - 3 (MUY POBRE): Solo espuma, onshore fuerte, difícil de pasar la rompiente.
+    - 2 (MALO): Condiciones nulas o peligrosas (mar pasado o tormenta).
+    - 1 (IMPOSIBLE): Lago total o sudestada destructiva.
+  - Windsurf, Kitesurf & Wingfoil:
+    - 10 (ÉPICO): Viento constante 20-28 nudos, Side-shore, agua plana o rampas prolijas.
+    - 9 (EXCELENTE): Viento 18-25 nudos, muy estable, dirección ideal.
+    - 8 (INCREÍBLE): Viento 15-20 nudos, estable, buenas condiciones de seguridad.
+    - 7 (MUY BUENO): Viento 13-18 nudos, algo de racha pero muy navegable.
+    - 6 (NAVEGABLE): 12-15 nudos (límite equipo chico) o viento >30 nudos (técnico).
+    - 5 (AFEITANDO): Viento racheado o al límite del planeo (10-12 nudos).
+    - 4 (POBRE): Viento muy racheado, dirección Onshore o <10 nudos.
+    - 3 (MUY POBRE): Viento de tierra (Offshore) fuerte (peligroso) o ráfagas nulas.
+    - 2 (MALO): Calma total o ráfagas de temporal.
+    - 1 (NULO): Sin una gota de viento.
+  - SUP (Travesía / Paseo):
+    - 10 (ÉPICO): Mar "aceite" (calma total), sin viento, visibilidad perfecta.
+    - 9 (EXCELENTE): Brisa imperceptible, agua muy cristalina y plana.
+    - 8 (INCREÍBLE): Viento <5 nudos, olas mínimas y ordenadas.
+    - 7 (MUY BUENO): Viento suave, algo de movimiento pero muy estable.
+    - 6 (REMABLE): Viento 8-10 nudos, genera deriva y requiere esfuerzo constante.
+    - 5 (EXIGENTE): Viento 10-12 nudos, el remo se pone pesado contra el viento.
+    - 4 (POBRE): Viento fuerte, imposible avanzar contra corriente o mar revuelto.
+    - 3 (MUY POBRE): Viento de tierra fuerte (te saca mar adentro) o picado molesto.
+    - 2 (MALO): Condiciones de temporal o ráfagas peligrosas.
+    - 1 (PELIGROSO): Prohibido entrar.
 - Playas Prohibidas (CRÍTICO): NUNCA RECOMIENDES "La Perla" en Mar del Plata para Surf o Bodyboard. Es una playa muy pequeña y con una forma que apacigua mucho la ola. Evita siempre recomendar playas pequeñas, muy cerradas o con rompeolas que anulen el swell para deportes de ola.
+- Diversidad de Spots (CRÍTICO): NO te limites a Playa Grande. Si las condiciones son buenas, prioriza otros points para evitar el crowd y encontrar mejores olas:
+  - Serena Sur (Mar del Plata): Excelente con swell del S/SE y viento del N/NW. Es una ola más larga y amigable.
+  - Chapadmalal (Luna Roja, Cruz del Sur, RCT): Maneja swells grandes mucho mejor que Playa Grande. Ideal cuando el mar está pasado en el centro.
+  - Miramar (Punta Viracho, El Muelle): Una alternativa de calidad superior cuando Mar del Plata está saturado o cerrando.
+  - Waikiki: RECOMIENDA SOLO para Longboard o principiantes, o si el swell es masivo del Sur y es el único lugar que aguanta. No es un spot de performance para shortboard.
 - Resultados por Día: DEBES generar un análisis completo (pronóstico, spots y veredicto) para CADA UNO de los días dentro del rango de fechas solicitado.
 - Horario Lógico (CRÍTICO): A partir de ahora, el análisis debe cubrir el DÍA COMPLETO, desde que amanece hasta que se va el sol. Este es el horario lógico para practicar estos deportes.
 - Lógica de Spots Específicos (CRÍTICO):
@@ -85,8 +136,8 @@ Reglas de Análisis (El Protocolo La posta del point):
     - Si el viento es del Norte, RECOMIENDA Biología sobre el Yacht. Si el viento es del Este/Sudeste, el Yacht suele tener mejor forma por el reparo de la piedra.
 - Veredicto (CRÍTICO): El veredicto debe ser una recomendación experta, DECISIVA y SEGURA para la jornada completa. 
   1. Identifica el MEJOR spot del día.
-  2. DEBES empezar el veredicto nombrando el spot ganador (ej: "El point del día para esta jornada es Playa Grande...").
-  3. Explica brevemente POR QUÉ es el mejor.
+  2. DEBES empezar el veredicto nombrando el spot ganador y resaltándolo en negrita usando Markdown (ej: "El point del día para esta jornada es **Playa Grande (El Yacht)**...").
+  3. Explica detalladamente POR QUÉ es el mejor, mencionando vientos, swells y períodos específicos.
   4. Si las condiciones son malas, ADVIÉRTELO claramente.
 - Temperatura del Agua y Wetsuit: DEBES estimar la temperatura del agua y recomendar el traje adecuado (ej: 3/2mm, 4/3mm, shorty).
 - Fuentes de Consulta (OBLIGATORIO): DEBES usar Google Search para obtener datos de Windguru, Surfline, Windy, estadodelmar.com.ar y lineup.surf.
@@ -214,6 +265,7 @@ const RadarLoader = ({ sport = 'Surf' }: { sport?: string }) => {
       'Buscando la serie perfecta...',
       'Chequeando el período de las olas...',
       'Viendo dónde rompe mejor...',
+      'Consultando satélites de clima...',
       'Buscando datos de condiciones...'
     ],
     'Bodyboard': [
@@ -221,6 +273,7 @@ const RadarLoader = ({ sport = 'Surf' }: { sport?: string }) => {
       'Analizando el rebote en las escolleras...',
       'Chequeando la fuerza del labio...',
       'Escaneando tubos...',
+      'Consultando satélites de clima...',
       'Buscando datos de condiciones...'
     ],
     'Windsurf': [
@@ -264,41 +317,41 @@ const RadarLoader = ({ sport = 'Surf' }: { sport?: string }) => {
 
   return (
     <div className="flex flex-col items-center justify-center space-y-10">
-      <div className="relative w-32 h-32 rounded-full border border-cyan-500/30 bg-slate-900/30 overflow-hidden shadow-[0_0_40px_rgba(6,182,212,0.15)] flex items-center justify-center">
+      <div className="relative w-40 h-40 rounded-full border border-slate-200 bg-slate-50 overflow-hidden shadow-xl flex items-center justify-center">
         {/* Radar grid lines */}
-        <div className="absolute inset-0 border-2 border-cyan-500/10 rounded-full m-4"></div>
-        <div className="absolute inset-0 border-2 border-cyan-500/10 rounded-full m-10"></div>
-        <div className="absolute w-full h-[1px] bg-cyan-500/20"></div>
-        <div className="absolute h-full w-[1px] bg-cyan-500/20"></div>
+        <div className="absolute inset-0 border border-slate-200 rounded-full m-6"></div>
+        <div className="absolute inset-0 border border-slate-200 rounded-full m-14"></div>
+        <div className="absolute w-full h-[1px] bg-slate-200"></div>
+        <div className="absolute h-full w-[1px] bg-slate-200"></div>
         
         {/* Sweeping radar beam */}
         <motion.div 
           className="absolute inset-0 rounded-full"
           style={{
-            background: 'conic-gradient(from 0deg, transparent 70%, rgba(6, 182, 212, 0.1) 80%, rgba(6, 182, 212, 0.5) 100%)'
+            background: 'conic-gradient(from 0deg, transparent 70%, rgba(234, 88, 12, 0.05) 80%, rgba(234, 88, 12, 0.3) 100%)'
           }}
           animate={{ rotate: 360 }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
         />
         
         {/* Blips */}
         <motion.div 
-          className="absolute w-2 h-2 bg-cyan-400 rounded-full shadow-[0_0_10px_#22d3ee]"
+          className="absolute w-2 h-2 bg-orange-500 rounded-full shadow-[0_0_10px_rgba(234,88,12,0.5)]"
           style={{ top: '30%', left: '60%' }}
           animate={{ opacity: [0, 1, 0], scale: [0.5, 1.5, 0.5] }}
-          transition={{ duration: 2.5, repeat: Infinity, times: [0, 0.1, 1] }}
+          transition={{ duration: 3, repeat: Infinity, times: [0, 0.1, 1] }}
         />
         <motion.div 
-          className="absolute w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_10px_#60a5fa]"
+          className="absolute w-1.5 h-1.5 bg-orange-400 rounded-full shadow-[0_0_10px_rgba(234,88,12,0.3)]"
           style={{ top: '65%', left: '35%' }}
           animate={{ opacity: [0, 1, 0], scale: [0.5, 1.5, 0.5] }}
-          transition={{ duration: 2.5, repeat: Infinity, delay: 1, times: [0, 0.1, 1] }}
+          transition={{ duration: 3, repeat: Infinity, delay: 1, times: [0, 0.1, 1] }}
         />
         
-        <Waves className="relative z-10 text-cyan-400 w-8 h-8 opacity-80" />
+        <Waves className="relative z-10 text-orange-600 w-10 h-10 opacity-80" />
       </div>
       <div className="flex flex-col items-center gap-2">
-        <h3 className="text-xl font-medium text-slate-200 min-h-[1.75rem]">
+        <h3 className="text-2xl font-display font-black italic uppercase tracking-tight text-slate-900 min-h-[1.75rem]">
           <AnimatePresence mode="wait">
             <motion.span
               key={messageIndex}
@@ -311,7 +364,7 @@ const RadarLoader = ({ sport = 'Surf' }: { sport?: string }) => {
             </motion.span>
           </AnimatePresence>
         </h3>
-        <p className="text-sm text-cyan-400/80 animate-pulse">Cruzando datos de viento, mareas y geografía</p>
+        <p className="text-xs font-extrabold text-slate-400 uppercase tracking-widest animate-pulse">Cruzando datos de viento, mareas y geografía</p>
       </div>
     </div>
   );
@@ -340,13 +393,34 @@ const getPeriodColor = (period: number) => {
 };
 
 const getCloudColor = (cover: number) => {
-  if (cover < 20) return 'bg-slate-100 text-slate-800'; // Despejado
-  if (cover < 50) return 'bg-slate-300 text-slate-800'; // Algo nublado
-  if (cover < 80) return 'bg-slate-500 text-slate-100'; // Mayormente nublado
-  return 'bg-slate-700 text-slate-100'; // Nublado
+  if (cover < 20) return { bg: 'bg-slate-50', text: 'text-slate-600' }; // Despejado
+  if (cover < 40) return { bg: 'bg-slate-200', text: 'text-slate-700' }; // Algo nublado
+  if (cover < 60) return { bg: 'bg-slate-400', text: 'text-slate-50' }; // Parcialmente nublado
+  if (cover < 80) return { bg: 'bg-slate-600', text: 'text-slate-100' }; // Mayormente nublado
+  return { bg: 'bg-slate-800', text: 'text-white' }; // Nublado
 };
 
-const EstadoDeLasCosas = ({ forecast, waterTemp, wetsuit }: { forecast: any[], waterTemp: number, wetsuit: string }) => {
+const InfoAgua = ({ waterTemp, wetsuit }: { waterTemp: number, wetsuit: string }) => (
+  <div className="bg-slate-50/60 flex items-center justify-around gap-4 border-t border-slate-100/50 py-6 px-8">
+    <div className="flex flex-col items-center gap-1.5">
+      <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Temperatura Agua</span>
+      <div className="flex items-center gap-2 text-blue-700 font-black text-2xl">
+        <Thermometer size={24} className="text-blue-500" />
+        {waterTemp}°C
+      </div>
+    </div>
+    <div className="w-px h-12 bg-slate-200/60" />
+    <div className="flex flex-col items-center gap-1.5">
+      <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Traje Recomendado</span>
+      <div className="flex items-center gap-2 text-orange-700 font-black text-2xl">
+        <Shirt size={24} className="text-orange-500" />
+        {wetsuit}
+      </div>
+    </div>
+  </div>
+);
+
+const EstadoDeLasCosas = ({ forecast, astronomy }: { forecast: any[], astronomy: any }) => {
   if (!forecast || forecast.length === 0) return null;
 
   const periods = forecast.slice(0, 3);
@@ -358,104 +432,91 @@ const EstadoDeLasCosas = ({ forecast, waterTemp, wetsuit }: { forecast: any[], w
           <Activity className="text-orange-600" size={24} />
           <h3 className="text-xl font-display font-extrabold italic tracking-tight text-slate-900">Pronóstico detallado</h3>
         </div>
-        <div className="flex items-center gap-4 text-xs font-bold text-slate-400">
+        <div className="flex items-center gap-4 text-sm font-bold text-slate-500">
+          <span className="text-sm uppercase tracking-widest text-slate-400">Sol:</span>
           <div className="flex items-center gap-1">
-            <Sun size={14} className="text-yellow-500" />
-            <span>06:38</span>
+            <Sun size={16} className="text-yellow-500" />
+            <span>{astronomy.sunrise}</span>
           </div>
           <div className="flex items-center gap-1">
-            <Moon size={14} className="text-indigo-400" />
-            <span>19:24</span>
+            <Moon size={16} className="text-indigo-400" />
+            <span>{astronomy.sunset}</span>
           </div>
         </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="text-xs font-extrabold uppercase tracking-widest text-slate-400 border-b border-slate-50">
-              <th className="px-6 py-5 bg-slate-50/50">HORA</th>
+            <tr className="text-xs font-extrabold uppercase tracking-widest text-slate-500 border-b border-slate-200 bg-slate-100">
+              <th className="px-6 py-4">HORA</th>
               {periods.map((p, i) => (
-                <th key={i} className="px-6 py-5 text-center bg-slate-50/30 text-sm text-slate-900 font-black">{p.time}</th>
+                <th key={i} className="px-6 py-4 text-center text-sm text-slate-900 font-black">{p.time}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
+          <tbody className="divide-y-2 divide-slate-100">
             <tr>
-              <td className="px-6 py-5 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+              <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
                 <Wind size={16} className="text-orange-600" /> Viento
               </td>
               {periods.map((p, i) => (
-                <td key={i} className="px-6 py-5 text-center">
-                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-black text-sm ${i === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-yellow-50 text-yellow-700'}`}>
+                <td key={i} className="px-6 py-2 text-center">
+                  <div className={`inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base ${i === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-yellow-50 text-yellow-700'}`}>
                     {p.windSpeed} <Navigation size={12} style={{ transform: `rotate(${getDirectionRotation(p.windDirection)}deg)` }} /> {p.windDirection}
                   </div>
                 </td>
               ))}
             </tr>
             <tr>
-              <td className="px-6 py-5 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+              <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
                 <Waves size={16} className="text-orange-600" /> Olas
               </td>
               {periods.map((p, i) => (
-                <td key={i} className="px-6 py-5 text-center">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-black text-sm bg-cyan-50 text-cyan-700">
+                <td key={i} className="px-6 py-2 text-center">
+                  <div className="inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base bg-cyan-50 text-cyan-700">
                     {p.waveHeight} <Navigation size={12} style={{ transform: `rotate(${getDirectionRotation(p.waveDirection)}deg)` }} /> {p.waveDirection}
                   </div>
                 </td>
               ))}
             </tr>
             <tr>
-              <td className="px-6 py-5 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+              <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
                 <Activity size={16} className="text-orange-600" /> Período
               </td>
               {periods.map((p, i) => (
-                <td key={i} className="px-6 py-5 text-center">
-                  <div className="inline-flex items-center gap-2 px-5 py-2 rounded-xl font-black text-sm bg-blue-50 text-blue-700">
+                <td key={i} className="px-6 py-2 text-center">
+                  <div className="inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base bg-blue-50 text-blue-700">
                     {p.wavePeriod}s
                   </div>
                 </td>
               ))}
             </tr>
             <tr>
-              <td className="px-6 py-5 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+              <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
                 <Cloud size={16} className="text-orange-600" /> Nubes
               </td>
-              {periods.map((p, i) => (
-                <td key={i} className="px-6 py-5 text-center">
-                  <div className="inline-flex items-center gap-2 px-5 py-2 rounded-xl font-black text-sm bg-slate-100 text-slate-600">
-                    {p.cloudCover}%
-                  </div>
-                </td>
-              ))}
+              {periods.map((p, i) => {
+                const colors = getCloudColor(p.cloudCover);
+                return (
+                  <td key={i} className="px-6 py-2 text-center">
+                    <div className={`inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base ${colors.bg} ${colors.text}`}>
+                      {p.cloudCover}%
+                    </div>
+                  </td>
+                );
+              })}
             </tr>
             <tr>
-              <td className="px-6 py-5 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+              <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
                 <Thermometer size={16} className="text-orange-600" /> Temp.
               </td>
               {periods.map((p, i) => (
-                <td key={i} className="px-6 py-5 text-center">
-                  <div className={`inline-flex items-center gap-2 px-5 py-2 rounded-xl font-black text-sm ${i === 0 ? 'bg-orange-50 text-orange-600' : 'bg-orange-100 text-orange-700'}`}>
+                <td key={i} className="px-6 py-2 text-center">
+                  <div className={`inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base ${i === 0 ? 'bg-orange-50 text-orange-600' : 'bg-orange-100 text-orange-700'}`}>
                     {p.temperature}°
                   </div>
                 </td>
               ))}
-            </tr>
-            <tr>
-              <td className="px-6 py-5 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
-                <Droplet size={16} className="text-orange-600" /> Agua
-              </td>
-              <td colSpan={2} className="px-6 py-5 text-center">
-                <div className="inline-flex items-center gap-4">
-                  <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-xl font-bold text-sm">
-                    <Thermometer size={18} />
-                    {waterTemp}°C
-                  </div>
-                  <div className="flex items-center gap-2 bg-orange-50 text-orange-700 px-4 py-2 rounded-xl font-bold text-sm">
-                    <Shirt size={18} />
-                    {wetsuit}
-                  </div>
-                </div>
-              </td>
             </tr>
           </tbody>
         </table>
@@ -702,13 +763,14 @@ export default function App() {
       setProgress(0);
       interval = setInterval(() => {
         setProgress((prev) => {
-          if (prev >= 98) return 98;
-          // Slow down as it gets closer to 100
+          if (prev >= 99) return 99;
+          // Much slower progress to avoid hitting 99% too fast
+          // Aiming for ~90% at 90 seconds
           const remaining = 100 - prev;
-          const increment = (Math.random() * remaining) / 10;
-          return Math.min(98, prev + increment);
+          const increment = (Math.random() * remaining) / 40; 
+          return Math.min(99, prev + increment);
         });
-      }, 500);
+      }, 1000);
     } else {
       setProgress(100);
       const timeout = setTimeout(() => setProgress(0), 500);
@@ -822,13 +884,24 @@ export default function App() {
 
     // Safety timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
-      if (loading && abortControllerRef.current) {
+      if (abortControllerRef.current) {
         console.warn("Búsqueda cancelada por exceso de tiempo (timeout)");
         abortControllerRef.current.abort();
-        setError("La búsqueda está demorando más de lo habitual. Por favor, intentá de nuevo o simplificá el rango de fechas.");
+        setError(
+          <div className="flex flex-col gap-2">
+            <p className="font-bold">⚠️ El radar está tardando más de lo habitual.</p>
+            <p className="text-xs opacity-80">Buscamos datos en tiempo real y a veces la conexión con los satélites de clima demora. Por favor, intentá de nuevo o reducí el rango de días.</p>
+            <button 
+              onClick={() => handleSubmit()}
+              className="mt-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-bold text-xs transition-colors w-fit"
+            >
+              REINTENTAR AHORA
+            </button>
+          </div>
+        );
         setLoading(false);
       }
-    }, 60000); // 60 seconds safety timeout
+    }, 120000); // 120 seconds safety timeout
 
     const prompt = `
 📍 Ubicación: ${location}
@@ -980,7 +1053,7 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
             <div className="flex flex-col gap-3">
               <p className="font-bold">⚠️ El radar gratuito está saturado.</p>
               <p className="text-xs opacity-80">
-                Para usar La posta del point sin límites, necesitás vincular tu propia API Key. 
+                Para usar Surfpoint sin límites, necesitás vincular tu propia API Key. 
                 <span className="block mt-1 text-cyan-400 font-medium">Importante: Google requiere que tu proyecto tenga la facturación activa (aunque el uso de Gemini suele entrar en el plan gratuito).</span>
               </p>
               <div className="flex flex-wrap gap-2">
@@ -1006,7 +1079,7 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
           setError('⚠️ El servicio de Google está experimentando una demora inusual. Te mostramos datos de respaldo mientras se normaliza.');
         }
       } else {
-        setError(`Hubo un error al consultar a La posta del point (${err.message || 'Error desconocido'}). Por favor, intentá de nuevo.`);
+        setError(`Hubo un error al consultar a Surfpoint (${err.message || 'Error desconocido'}). Por favor, intentá de nuevo.`);
       }
     } finally {
       clearTimeout(timeoutId);
@@ -1069,23 +1142,28 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
 
             {/* Main Form Hero */}
             <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-12">
-              <div className="w-full max-w-2xl text-center mb-12">
-                  <h1 
-                    className="text-5xl md:text-7xl font-display font-extrabold text-slate-900 mb-6 leading-[0.9] tracking-tight uppercase italic"
-                  >
-                    LA POSTA DEL <span className="text-orange-600">POINT</span>
-                  </h1>
-                <p className="text-xl text-slate-700 font-medium mx-auto">
-                  Tu radar experto para deportes de tabla en la costa argentina.
-                </p>
-              </div>
+                  <div className="w-full max-w-4xl text-center mb-12">
+                    <h1 
+                      className="text-4xl sm:text-5xl md:text-7xl font-display font-extrabold text-slate-900 mb-6 leading-[0.9] tracking-tight uppercase italic whitespace-nowrap inline-block"
+                    >
+                      SURF<span className="text-orange-600">POINT</span>
+                    </h1>
+                    <p className="text-xl text-slate-900 font-extrabold mx-auto max-w-2xl drop-shadow-[0_0_8px_rgba(255,255,255,1)]">
+                      Tu radar experto para deportes de tabla en la costa argentina.
+                    </p>
+                  </div>
 
               <div className="w-full max-w-3xl flex flex-col items-center">
                 <motion.div 
                   initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="w-full bg-white rounded-[1.5rem] p-5 md:p-6 shadow-2xl border-white/50"
+                  className="w-full bg-white/90 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-white/50"
                 >
+                  <div className="mb-8 text-left px-1">
+                    <p className="text-slate-500 font-normal text-[24px] leading-tight tracking-tight">
+                      Llená el formulario y te daremos la posta de dónde meterte
+                    </p>
+                  </div>
                   <form onSubmit={handleSubmit} className="space-y-6">
                     {/* CIUDAD */}
                     <div className="space-y-2 relative">
@@ -1155,13 +1233,17 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                       <div className="space-y-2">
                         <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">Deporte</label>
-                        <div className="grid grid-cols-3 gap-2 bg-slate-100 p-1 rounded-2xl">
+                        <div className="grid grid-cols-3 gap-2 bg-slate-200/60 p-1.5 rounded-2xl">
                           {['Surf', 'Bodyboard', 'Kitesurf', 'Windsurf', 'SUP', 'Wingfoil'].map((s) => (
                             <button
                               key={s}
                               type="button"
                               onClick={() => setSport(s)}
-                              className={`py-3 rounded-xl text-xs font-extrabold transition-all ${sport === s ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                              className={`py-3 rounded-xl text-[10px] md:text-xs font-extrabold transition-all border-2 ${
+                                sport === s 
+                                  ? 'bg-white text-orange-600 border-white shadow-md scale-[1.02]' 
+                                  : 'bg-white/60 text-slate-500 border-transparent hover:bg-white/80 hover:border-slate-300 hover:text-slate-700'
+                              }`}
                             >
                               {s}
                             </button>
@@ -1172,7 +1254,17 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                         <div className="flex justify-between items-center mb-1">
                           <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">Movilidad</label>
                         </div>
-                        <div className="pt-4 px-2">
+                        <div className="px-2 relative h-8 flex items-center mt-4">
+                          {/* Tick marks for affordance - aligned with thumb positions */}
+                          <div className="absolute left-[13px] right-[13px] inset-0 flex justify-between pointer-events-none z-20 items-center">
+                            {[0, 10, 20, 30, 40, 50].map((val) => (
+                              <div 
+                                key={val} 
+                                className={`w-2 h-2 rounded-full bg-slate-400/60 border border-white/20 transition-opacity duration-200 ${mobility === val ? 'opacity-0' : 'opacity-100'}`} 
+                              />
+                            ))}
+                          </div>
+                          
                           <input
                             type="range"
                             min="0"
@@ -1180,18 +1272,21 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                             step="10"
                             value={mobility}
                             onChange={(e) => setMobility(Number(e.target.value))}
-                            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
+                            className="relative z-10 w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
                           />
-                          <div className="flex justify-between text-[10px] font-black text-slate-400 mt-3 px-1">
-                            {['0', '10', '20', '30', '40', '50'].map(val => (
-                              <span key={val} className={mobility === Number(val) ? 'text-orange-600 scale-125 transition-transform' : ''}>
+                        </div>
+                          
+                        <div className="flex justify-between text-[10px] font-black text-slate-400 mt-4 px-2">
+                          {['0', '10', '20', '30', '40', '50'].map(val => (
+                            <div key={val} className="w-4 flex justify-center">
+                              <span className={`transition-all duration-300 whitespace-nowrap ${mobility === Number(val) ? 'text-orange-600 scale-110' : ''}`}>
                                 {val}KM
                               </span>
-                            ))}
-                          </div>
+                            </div>
+                          ))}
+                        </div>
                         </div>
                       </div>
-                    </div>
 
                     <button
                       type="submit"
@@ -1217,7 +1312,7 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
 
             {/* Footer */}
             <footer className="relative z-10 p-8 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">
-              © 2026 LA POSTA DEL POINT • Hecho con <span className="text-orange-500">♥</span> en la costa
+              © 2026 SURFPOINT • Hecho con <span className="text-orange-500">♥</span> en la costa
             </footer>
           </motion.div>
         ) : (
@@ -1228,13 +1323,7 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
             className="min-h-screen bg-slate-50 pb-20"
           >
             {/* Results Header */}
-            <header className="bg-white border-b border-slate-200 sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
-              <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('form')}>
-                <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center shadow-md rotate-3">
-                  <Waves className="text-white" size={18} />
-                </div>
-                <span className="text-xl font-display font-extrabold tracking-tighter text-slate-900 uppercase italic">LA POSTA DEL <span className="text-orange-600">POINT</span></span>
-              </div>
+            <header className="bg-white border-b border-slate-200 sticky top-0 z-50 px-6 py-4 flex items-center justify-between relative">
               <button 
                 onClick={() => setView('form')}
                 className="flex items-center gap-2 text-sm font-extrabold text-slate-500 hover:text-orange-600 transition-colors uppercase tracking-tight"
@@ -1242,41 +1331,25 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                 <ArrowDown className="rotate-90" size={16} />
                 Nueva Consulta
               </button>
+
+              <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 cursor-pointer" onClick={() => setView('form')}>
+                <span className="text-xl md:text-2xl font-display font-extrabold tracking-tighter text-slate-900 uppercase italic">SURF<span className="text-orange-600">POINT</span></span>
+              </div>
+              
+              <div className="w-24" /> {/* Spacer to balance the layout */}
             </header>
 
-            <div className="max-w-4xl mx-auto px-4 py-6 space-y-6" ref={resultsRef}>
-              {/* Query Summary Card */}
-              <div className="bg-orange-600 rounded-[1.5rem] p-4 text-white shadow-xl shadow-orange-200 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                    <MapPin size={20} />
-                  </div>
-                  <div>
-                    <p className="text-xl font-display font-extrabold italic uppercase tracking-tight">{location}</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-4">
-                  <div className="bg-white/10 px-4 py-2 rounded-xl backdrop-blur-sm">
-                    <span className="text-[10px] font-extrabold uppercase block opacity-60">Deporte</span>
-                    <span className="text-sm font-bold">{sport}</span>
-                  </div>
-                  <div className="bg-white/10 px-4 py-2 rounded-xl backdrop-blur-sm">
-                    <span className="text-[10px] font-extrabold uppercase block opacity-60">Rango</span>
-                    <span className="text-sm font-bold">{startDate === endDate ? getDayOfWeek(startDate) : `${getDayOfWeek(startDate)} - ${getDayOfWeek(endDate)}`}</span>
-                  </div>
-                </div>
-              </div>
-
+            <div className="max-w-4xl mx-auto px-4 py-6 space-y-10" ref={resultsRef}>
               {/* Greeting */}
               {result?.greeting && (
                 <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center max-w-2xl mx-auto"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-center space-y-2"
                 >
-                  <p className="text-2xl font-display font-extrabold text-slate-900 italic uppercase tracking-tight leading-tight">
+                  <h2 className="text-2xl md:text-4xl font-display font-extrabold italic tracking-tight text-slate-900 leading-tight">
                     {result.greeting}
-                  </p>
+                  </h2>
                 </motion.div>
               )}
 
@@ -1306,32 +1379,29 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                     className="space-y-8"
                   >
                     {/* Verdict Card */}
-                    <div className="bg-white rounded-[1.5rem] p-8 md:p-10 shadow-xl border border-slate-100 relative overflow-hidden">
-                      <div className="relative z-10 space-y-6">
+                    <div className="bg-white rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-2 border-slate-100 relative overflow-hidden">
+                      <div className="p-8 md:p-10 space-y-8">
                         <div className="flex items-center gap-3 text-orange-600">
-                          <Target size={28} />
-                          <h2 className="text-2xl font-display font-extrabold italic tracking-tight">Veredicto la posta del point</h2>
+                          <Target size={32} />
+                          <h2 className="text-3xl md:text-4xl font-display font-extrabold italic tracking-tight">La posta</h2>
                         </div>
-                        <p className="text-lg md:text-xl text-slate-800 font-medium leading-relaxed">
-                          {result.dailyResults[selectedDayIndex].verdict}
-                        </p>
+                        <div className="text-base md:text-lg text-slate-800 font-medium leading-relaxed markdown-body">
+                          <ReactMarkdown>{result.dailyResults[selectedDayIndex].verdict}</ReactMarkdown>
+                        </div>
                       </div>
+
+                      {/* Info Agua (Integrated - Bleeding to edges) */}
+                      <InfoAgua 
+                        waterTemp={result.dailyResults[selectedDayIndex].waterTemp}
+                        wetsuit={result.dailyResults[selectedDayIndex].wetsuit}
+                      />
                     </div>
 
-                    <AdSlot className="h-32" />
-
-                    {/* Pronóstico detallado (Estado de las cosas) */}
-                    <EstadoDeLasCosas 
-                      forecast={result.dailyResults[selectedDayIndex].forecast} 
-                      waterTemp={result.dailyResults[selectedDayIndex].waterTemp}
-                      wetsuit={result.dailyResults[selectedDayIndex].wetsuit}
-                    />
-
-                    {/* Spots Grid */}
+                    {/* Spots Grid (Moved up) */}
                     <div className="space-y-6">
                       <div className="flex items-center gap-3 text-slate-900">
                         <MapPin size={24} className="text-orange-600" />
-                        <h2 className="text-2xl font-display font-extrabold italic tracking-tight">Los points recomendados</h2>
+                        <h2 className="text-2xl font-display font-extrabold italic tracking-tight">Los points del día</h2>
                       </div>
                       
                       <div className="grid grid-cols-1 gap-6">
@@ -1351,25 +1421,25 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                                   }}
                                   className={`rounded-2xl p-4 border transition-all cursor-pointer relative group bg-orange-50 border-orange-200`}
                                 >
-                                  <div className="absolute top-4 right-4 bg-white px-2 py-1 rounded-lg shadow-sm flex items-center gap-1">
-                                    <Star size={12} className="text-orange-500 fill-orange-500" />
-                                    <span className="text-[10px] font-black text-slate-800">{spot.score}/10</span>
+                                  <div className="absolute top-4 right-4 bg-white px-3 py-1.5 rounded-xl shadow-md flex items-center gap-1.5 border border-slate-100">
+                                    <Star size={16} className="text-orange-500 fill-orange-500" />
+                                    <span className="text-sm font-black text-slate-900">{spot.score}/10</span>
                                   </div>
                                   <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black mb-3 shadow-sm transition-colors bg-orange-600 text-white`}>
                                     {sIdx + 1}
                                   </span>
                                   <h4 className="text-lg font-display font-extrabold italic tracking-tight text-slate-900 mb-2">{spot.name}</h4>
-                                  <p className="text-sm text-slate-600 font-medium leading-snug mb-4">{spot.description}</p>
+                                  <p className="text-base text-slate-600 font-medium leading-relaxed mb-4">{spot.description}</p>
                                   
                                   <div className="pt-4 border-t border-orange-200">
                                     <a 
                                       href={`https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="text-[10px] font-black uppercase text-orange-600 flex items-center gap-1 hover:underline"
+                                      className="text-xs font-black uppercase text-orange-600 flex items-center gap-1 hover:underline"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      <Navigation size={12} /> Ver en Google Maps
+                                      <Navigation size={14} /> Ver en Google Maps
                                     </a>
                                   </div>
                                 </div>
@@ -1379,6 +1449,14 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                         ))}
                       </div>
                     </div>
+
+                    <AdSlot className="h-32" />
+
+                    {/* Pronóstico detallado (Estado de las cosas) */}
+                    <EstadoDeLasCosas 
+                      forecast={result.dailyResults[selectedDayIndex].forecast} 
+                      astronomy={result.astronomy}
+                    />
 
                     <AdSlot className="h-32" />
 
@@ -1411,32 +1489,36 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-white/90 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center"
+            className="fixed inset-0 z-[100] bg-white/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center"
           >
-            <div className="relative mb-8">
-              <motion.div 
-                animate={{ rotate: 360 }}
-                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                className="w-32 h-32 border-4 border-slate-100 border-t-orange-600 rounded-full"
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Waves className="text-orange-600 animate-pulse" size={40} />
-              </div>
+            <div className="mb-12">
+              <RadarLoader sport={sport} />
             </div>
-            <h2 className="text-3xl font-display font-extrabold italic uppercase tracking-tight text-slate-900 mb-4">
-              Escaneando el horizonte...
-            </h2>
-            <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mb-8">
-              La posta del point está analizando vientos, mareas y swells para vos
+
+            <p className="text-slate-600 text-sm mb-8 max-w-xs tracking-tight font-medium">
+              Buscando datos en tiempo real. Esto puede demorar un rato.
             </p>
-            <div className="w-full max-w-xs bg-slate-100 h-2 rounded-full overflow-hidden">
+            
+            <div className="w-full max-w-xs bg-slate-100 h-2 rounded-full overflow-hidden mb-4">
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 className="h-full bg-orange-600"
               />
             </div>
-            <p className="mt-4 text-orange-600 font-black text-sm">{Math.round(progress)}%</p>
+            <p className="text-orange-600 font-black text-sm">{Math.round(progress)}%</p>
+
+            <button 
+              onClick={() => {
+                if (abortControllerRef.current) {
+                  abortControllerRef.current.abort();
+                }
+                setLoading(false);
+              }}
+              className="mt-16 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 rounded-2xl font-black uppercase text-xs tracking-widest transition-all flex items-center gap-2 border border-slate-200 shadow-sm"
+            >
+              <AlertCircle size={14} /> Cancelar búsqueda
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

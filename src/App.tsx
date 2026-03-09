@@ -29,6 +29,7 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
+
 const MOCK_RESULT = {
   greeting: "¡Aloha, rider! Te compartimos un análisis de demostración para tu sesión.",
   astronomy: { sunrise: "06:15", sunset: "19:30" },
@@ -60,32 +61,36 @@ const SYSTEM_INSTRUCTION = `Rol: Sos Surfpoint, un asesor experto en deportes de
 
 Reglas de Análisis (El Protocolo Surfpoint):
 - Brevedad (EXTREMA): Para reducir el tiempo de respuesta, mantén las descripciones muy breves (máximo 10 palabras por spot). No generes texto de relleno. El tiempo es oro.
-- Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE SOBRE LA LÍNEA DE COSTA (LA ARENA), EN EL PUNTO EXACTO DONDE SE ENCUENTRA LA ENTRADA AL MAR O EL PARADOR. NUNCA EN EL AGUA, NUNCA EN EL MALECÓN/ESCOLLERA, NUNCA EN LA CIUDAD. 
+- Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE SOBRE LA LÍNEA DE COSTA (LA ARENA), EN EL PUNTO EXACTO DONDE SE ENCUENTRA LA ENTRADA AL MAR O EL PARADOR. NUNCA EN EL AGUA, NUNCA EN EL MEDIO DEL MAR, NUNCA EN EL MALECÓN/ESCOLLERA, NUNCA EN LA CIUDAD. 
   Usa esta BASE DE DATOS DE SPOTS para máxima precisión. SI EL SPOT ESTÁ EN ESTA LISTA, ES OBLIGATORIO USAR ESTAS COORDENADAS EXACTAS:
   - Mar del Plata:
-    - Playa Grande (Biología): -38.0258, -57.5306
-    - Playa Grande (El Yacht): -38.0305, -57.5318
-    - Waikiki: -38.0694, -57.5461
-    - Serena Sur: -38.0855, -57.5585
-    - La Paloma: -38.0895, -57.5615
-    - Varese: -38.0125, -57.5365
-    - Cardiel: -37.9785, -57.5425
-    - Estrada: -37.9655, -57.5455
-    - Sun Rider: -37.9555, -57.5485
-    - Mariano: -38.0655, -57.5465
-    - Honu Beach: -38.0775, -57.5515
-    - El Faro: -38.0825, -57.5545
+    - Playa Grande (Biología): -38.0265, -57.5315
+    - Playa Grande (El Yacht): -38.0312, -57.5332
+    - Waikiki: -38.0698, -57.5475
+    - Serena Sur: -38.0862, -57.5595
+    - La Paloma: -38.0902, -57.5625
+    - Varese: -38.0132, -57.5375
+    - Cardiel: -37.9792, -57.5435
+    - Estrada: -37.9662, -57.5465
+    - Sun Rider: -37.9562, -57.5495
+    - Mariano: -38.0662, -57.5475
+    - Honu Beach: -38.0782, -57.5525
+    - El Faro: -38.0832, -57.5555
   - Chapadmalal:
-    - Luna Roja: -38.1585, -57.6445
-    - Cruz del Sur: -38.1655, -57.6525
-    - RCT: -38.1755, -57.6625
+    - Luna Roja: -38.1592, -57.6455
+    - Cruz del Sur: -38.1662, -57.6535
+    - RCT: -38.1762, -57.6635
   - Miramar:
-    - Punta Viracho: -38.2855, -57.8225
-    - El Muelle: -38.2755, -57.8325
-    - Pompeya: -38.2655, -57.8425
+    - Punta Viracho: -38.2862, -57.8235
+    - El Muelle: -38.2762, -57.8335
+    - Pompeya: -38.2662, -57.8435
   - Necochea:
-    - Escollera Necochea: -38.5855, -58.7025
-    - El Caño: -38.5955, -58.7125
+    - Escollera Necochea (Arena): -38.5878, -58.7075
+    - El Caño: -38.5935, -58.7155
+    - Karamawi: -38.6015, -58.7255
+  - Quequén:
+    - La Hélice: -38.5775, -58.6855
+    - Monte Pasubio: -38.5715, -58.6755
   - El usuario usará esto para navegar con Google Maps, por lo que la precisión es vital. Sé extremadamente preciso con los decimales.
 - Criterio de Puntuación (CRÍTICO): Sé EXTREMADAMENTE exigente con el puntaje (score 1-10). No regales puntos.
   - Surf & Bodyboard:
@@ -128,7 +133,12 @@ Reglas de Análisis (El Protocolo Surfpoint):
   - Miramar (Punta Viracho, El Muelle): Una alternativa de calidad superior cuando Mar del Plata está saturado o cerrando.
   - Waikiki: RECOMIENDA SOLO para Longboard o principiantes, o si el swell es masivo del Sur y es el único lugar que aguanta. No es un spot de performance para shortboard.
 - Resultados por Día: DEBES generar un análisis completo (pronóstico, spots y veredicto) para CADA UNO de los días dentro del rango de fechas solicitado.
-- Horario Lógico (CRÍTICO): A partir de ahora, el análisis debe cubrir el DÍA COMPLETO, desde que amanece hasta que se va el sol. Este es el horario lógico para practicar estos deportes.
+- Horario Lógico (CRÍTICO): El análisis DEBE dividirse exactamente en 3 franjas horarias:
+  1. Mañana: 07:00 a 12:00 (Referencia: 08:00)
+  2. Mediodía: 12:00 a 16:00 (Referencia: 13:00)
+  3. Tarde: 16:00 a 20:00 (Referencia: 18:00)
+- "forecast": Array con el pronóstico por horas de ESE día. DEBE tener exactamente 3 objetos con "time" siendo: "Mañana (08:00)", "Mediodía (13:00)" y "Tarde (18:00)".
+- "bestSpots": Array de spots recomendados para ESE día. DEBE tener exactamente 3 objetos con "timeWindow" siendo: "Mañana (07:00 a 12:00)", "Mediodía (12:00 a 16:00)" y "Tarde (16:00 a 20:00)".
 - Lógica de Spots Específicos (CRÍTICO):
   - Playa Grande (Mar del Plata): 
     - "El Yacht" es mejor con vientos del E, NE o SE suave, ya que la escollera protege. Es para un nivel más avanzado.
@@ -152,8 +162,8 @@ El output para el usuario debe ser un objeto JSON que contenga:
    - "dayName": Nombre del día (ej: "Jueves 5")
    - "waterTemp": Temperatura del agua estimada (ej: 19)
    - "wetsuit": Recomendación de traje (ej: "3/2mm")
-   - "forecast": Array con el pronóstico por horas de ESE día (Mañana, Mediodía, Tarde). Cada objeto debe tener "time" (ej: "Mañana (07:00)"), "windSpeed" (nudos), "windDirection" (ej: "NW"), "waveHeight" (metros, 0 si no aplica), "waveDirection" (ej: "SE"), "wavePeriod" (segundos, 0 si no aplica), "temperature" (°C) y "cloudCover" (porcentaje de nubosidad, de 0 a 100).
-   - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. Cada objeto tiene "timeWindow" y "spots" (máximo 3 spots). Cada spot tiene "name", "description" (explicación MUY corta), "lat", "lng" y "score" (un número del 1 al 10 que representa la calidad del spot para ese momento).
+   - "forecast": Array con el pronóstico por horas de ESE día. DEBE tener exactamente 3 objetos correspondientes a: "Mañana (08:00)", "Mediodía (13:00)" y "Tarde (18:00)".
+   - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. DEBE tener exactamente 3 objetos con "timeWindow" siendo: "Mañana (07:00 a 12:00)", "Mediodía (12:00 a 16:00)" y "Tarde (16:00 a 20:00)".
    - "verdict": Veredicto experto y decidido.`;
 
 const TimePicker = ({ value, onChange, minTime, className = "" }: { value: string, onChange: (val: string) => void, minTime?: string, className?: string }) => {
@@ -425,6 +435,13 @@ const EstadoDeLasCosas = ({ forecast, astronomy }: { forecast: any[], astronomy:
 
   const periods = forecast.slice(0, 3);
 
+  const getTimeRange = (timeLabel: string) => {
+    if (timeLabel.includes('Mañana')) return '07:00 a 12:00';
+    if (timeLabel.includes('Mediodía')) return '12:00 a 16:00';
+    if (timeLabel.includes('Tarde')) return '16:00 a 20:00';
+    return '';
+  };
+
   return (
     <div className="bg-white rounded-[1.5rem] overflow-hidden border border-slate-100 shadow-xl">
       <div className="p-6 border-b border-slate-100 flex items-center justify-between">
@@ -450,7 +467,10 @@ const EstadoDeLasCosas = ({ forecast, astronomy }: { forecast: any[], astronomy:
             <tr className="text-xs font-extrabold uppercase tracking-widest text-slate-500 border-b border-slate-200 bg-slate-100">
               <th className="px-6 py-4">HORA</th>
               {periods.map((p, i) => (
-                <th key={i} className="px-6 py-4 text-center text-sm text-slate-900 font-black">{p.time}</th>
+                <th key={i} className="px-6 py-4 text-center">
+                  <div className="text-sm text-slate-900 font-black uppercase">{p.time}</div>
+                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{getTimeRange(p.time)}</div>
+                </th>
               ))}
             </tr>
           </thead>
@@ -837,6 +857,7 @@ export default function App() {
     setError('');
     setResult(null);
     setShowCharts(false);
+    setHasAutoSubmitted(true);
     
     // Initialize abort controller
     abortControllerRef.current = new AbortController();
@@ -968,7 +989,7 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                       items: {
                         type: Type.OBJECT,
                         properties: {
-                          time: { type: Type.STRING, description: "Período y Hora (ej: 'Mañana (08:00 - 12:00)')" },
+                          time: { type: Type.STRING, description: "Período y Hora. DEBE ser exactamente uno de: 'Mañana (08:00)', 'Mediodía (13:00)', 'Tarde (18:00)'" },
                           windSpeed: { type: Type.NUMBER, description: "Velocidad del viento en nudos" },
                           windDirection: { type: Type.STRING, description: "Dirección del viento (ej: NW, S, SE)" },
                           waveHeight: { type: Type.NUMBER, description: "Altura de la ola en metros" },
@@ -986,7 +1007,7 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                       items: {
                         type: Type.OBJECT,
                         properties: {
-                          timeWindow: { type: Type.STRING, description: "Franja horaria, ej: Mañana (08:00 a 12:00)" },
+                          timeWindow: { type: Type.STRING, description: "Franja horaria. DEBE ser exactamente uno de: 'Mañana (07:00 a 12:00)', 'Mediodía (12:00 a 16:00)', 'Tarde (16:00 a 20:00)'" },
                           spots: {
                             type: Type.ARRAY,
                             description: "Spots recomendados en este horario, ordenados por calidad.",
@@ -1089,12 +1110,11 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
 
   // Auto-submit on load if URL has parameters
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.get('loc') && !hasAutoSubmitted) {
-      setHasAutoSubmitted(true);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('loc') && !hasAutoSubmitted) {
       handleSubmit();
     }
-  }, [hasAutoSubmitted, location, startDate, endDate, sport, mobility, objective]);
+  }, []); // Only run once on mount
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -1160,8 +1180,8 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                   className="w-full bg-white/90 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-white/50"
                 >
                   <div className="mb-8 text-left px-1">
-                    <p className="text-slate-500 font-normal text-[24px] leading-tight tracking-tight">
-                      Llená el formulario y te daremos la posta de dónde meterte
+                    <p className="text-slate-500 font-normal text-[23px] leading-tight tracking-tight">
+                      Llená el formulario y te damos la posta de dónde meterte
                     </p>
                   </div>
                   <form onSubmit={handleSubmit} className="space-y-6">
@@ -1231,8 +1251,8 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
 
                     {/* Deporte y Movilidad */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                      <div className="space-y-2">
-                        <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">Deporte</label>
+                      <div className="space-y-3">
+                        <label className="text-sm font-extrabold text-slate-400 uppercase tracking-widest ml-1">Deporte</label>
                         <div className="grid grid-cols-3 gap-2 bg-slate-200/60 p-1.5 rounded-2xl">
                           {['Surf', 'Bodyboard', 'Kitesurf', 'Windsurf', 'SUP', 'Wingfoil'].map((s) => (
                             <button
@@ -1250,11 +1270,12 @@ El veredicto debe centrarse en el mejor momento y lugar del día.
                           ))}
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center mb-1">
-                          <label className="text-xs font-extrabold text-slate-400 uppercase tracking-widest ml-1">Movilidad</label>
+                      <div className="space-y-3">
+                        <div className="flex flex-col mb-1">
+                          <label className="text-sm font-extrabold text-slate-400 uppercase tracking-widest ml-1">Movilidad</label>
+                          <p className="text-xs text-slate-500 font-medium ml-1 mt-1">¿Cuán lejos estás dispuesto a moverte por las olas?</p>
                         </div>
-                        <div className="px-2 relative h-8 flex items-center mt-4">
+                        <div className="px-2 relative h-8 flex items-center mt-2">
                           {/* Tick marks for affordance - aligned with thumb positions */}
                           <div className="absolute left-[13px] right-[13px] inset-0 flex justify-between pointer-events-none z-20 items-center">
                             {[0, 10, 20, 30, 40, 50].map((val) => (

@@ -29,6 +29,56 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
+const SPOT_COORDINATES: Record<string, { lat: number, lng: number }> = {
+  "Playa Grande (Biología)": { lat: -38.0265, lng: -57.5315 },
+  "Playa Grande (El Yacht)": { lat: -38.0312, lng: -57.5332 },
+  "Waikiki": { lat: -38.0698, lng: -57.5425 },
+  "Serena Sur": { lat: -38.0862, lng: -57.5475 },
+  "La Paloma": { lat: -38.0895, lng: -57.5415 },
+  "Varese": { lat: -38.0132, lng: -57.5355 },
+  "Cardiel": { lat: -37.9792, lng: -57.5415 },
+  "Estrada": { lat: -37.9662, lng: -57.5445 },
+  "Sun Rider": { lat: -37.9562, lng: -57.5475 },
+  "Mariano": { lat: -38.0715, lng: -57.5435 },
+  "Honu Beach": { lat: -38.0782, lng: -57.5455 },
+  "El Faro": { lat: -38.0832, lng: -57.5465 },
+  "Luna Roja": { lat: -38.1592, lng: -57.6355 },
+  "Cruz del Sur": { lat: -38.1662, lng: -57.6435 },
+  "RCT": { lat: -38.1762, lng: -57.6535 },
+  "Punta Viracho": { lat: -38.2862, lng: -57.8135 },
+  "El Muelle": { lat: -38.2762, lng: -57.8235 },
+  "Pompeya": { lat: -38.2662, lng: -57.8335 },
+  "Escollera Necochea (Arena)": { lat: -38.5878, lng: -58.7075 },
+  "El Caño": { lat: -38.5935, lng: -58.7155 },
+  "Karamawi": { lat: -38.6015, lng: -58.7255 },
+  "La Hélice": { lat: -38.5775, lng: -58.6855 },
+  "Monte Pasubio": { lat: -38.5715, lng: -58.6755 }
+};
+
+const sanitizeResult = (data: any) => {
+  if (!data || !data.dailyResults) return data;
+  
+  data.dailyResults.forEach((day: any) => {
+    if (day.bestSpots) {
+      day.bestSpots.forEach((window: any) => {
+        if (window.spots) {
+          window.spots.forEach((spot: any) => {
+            const dbName = Object.keys(SPOT_COORDINATES).find(name => 
+              spot.name.toLowerCase().includes(name.toLowerCase()) || 
+              name.toLowerCase().includes(spot.name.toLowerCase())
+            );
+            
+            if (dbName) {
+              spot.lat = SPOT_COORDINATES[dbName].lat;
+              spot.lng = SPOT_COORDINATES[dbName].lng;
+            }
+          });
+        }
+      });
+    }
+  });
+  return data;
+};
 
 const MOCK_RESULT = {
   greeting: "¡Aloha, rider! Te compartimos un análisis de demostración para tu sesión.",
@@ -49,7 +99,7 @@ const MOCK_RESULT = {
         {
           timeWindow: "Mañana (Amanecer a 13:00)",
           spots: [
-            { name: "Playa Grande (El Yacht)", description: "La escollera protege del viento ENE, manteniendo la cara de la ola más limpia.", lat: -38.0305, lng: -57.5318, score: 6 }
+            { name: "Playa Grande (El Yacht)", description: "La escollera protege del viento ENE, manteniendo la cara de la ola más limpia.", lat: -38.0312, lng: -57.5332, score: 6 }
           ]
         },
         {
@@ -73,24 +123,24 @@ Reglas de Análisis (El Protocolo Surfpoint):
   - Mar del Plata:
     - Playa Grande (Biología): -38.0265, -57.5315
     - Playa Grande (El Yacht): -38.0312, -57.5332
-    - Waikiki: -38.0698, -57.5455
-    - Serena Sur: -38.0862, -57.5535
-    - La Paloma: -38.0955, -57.5545
+    - Waikiki: -38.0698, -57.5425
+    - Serena Sur: -38.0862, -57.5475
+    - La Paloma: -38.0895, -57.5415
     - Varese: -38.0132, -57.5355
     - Cardiel: -37.9792, -57.5415
     - Estrada: -37.9662, -57.5445
     - Sun Rider: -37.9562, -57.5475
-    - Mariano: -38.0662, -57.5455
-    - Honu Beach: -38.0782, -57.5505
-    - El Faro: -38.0832, -57.5525
+    - Mariano: -38.0715, -57.5435
+    - Honu Beach: -38.0782, -57.5455
+    - El Faro: -38.0832, -57.5465
   - Chapadmalal:
-    - Luna Roja: -38.1592, -57.6395
-    - Cruz del Sur: -38.1662, -57.6475
-    - RCT: -38.1762, -57.6575
+    - Luna Roja: -38.1592, -57.6355
+    - Cruz del Sur: -38.1662, -57.6435
+    - RCT: -38.1762, -57.6535
   - Miramar:
-    - Punta Viracho: -38.2862, -57.8175
-    - El Muelle: -38.2762, -57.8275
-    - Pompeya: -38.2662, -57.8375
+    - Punta Viracho: -38.2862, -57.8135
+    - El Muelle: -38.2762, -57.8235
+    - Pompeya: -38.2662, -57.8335
   - Necochea:
     - Escollera Necochea (Arena): -38.5878, -58.7075
     - El Caño: -38.5935, -58.7155
@@ -1084,7 +1134,7 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
       if (abortControllerRef.current?.signal.aborted) return;
 
       const jsonStr = response.text || '{}';
-      const parsed = JSON.parse(jsonStr);
+      const parsed = sanitizeResult(JSON.parse(jsonStr));
       
       // Capture usage statistics
       if (response.usageMetadata) {

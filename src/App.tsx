@@ -30,29 +30,34 @@ let DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 const SPOT_COORDINATES: Record<string, { lat: number, lng: number }> = {
-  "Playa Grande (Biología)": { lat: -38.0265, lng: -57.5315 },
-  "Playa Grande (El Yacht)": { lat: -38.0312, lng: -57.5332 },
-  "Waikiki": { lat: -38.0698, lng: -57.5425 },
-  "Serena Sur": { lat: -38.0862, lng: -57.5475 },
-  "La Paloma": { lat: -38.0895, lng: -57.5415 },
-  "Varese": { lat: -38.0132, lng: -57.5355 },
-  "Cardiel": { lat: -37.9792, lng: -57.5415 },
-  "Estrada": { lat: -37.9662, lng: -57.5445 },
-  "Sun Rider": { lat: -37.9562, lng: -57.5475 },
-  "Mariano": { lat: -38.0715, lng: -57.5435 },
-  "Honu Beach": { lat: -38.0782, lng: -57.5455 },
-  "El Faro": { lat: -38.0832, lng: -57.5465 },
-  "Luna Roja": { lat: -38.1592, lng: -57.6355 },
-  "Cruz del Sur": { lat: -38.1662, lng: -57.6435 },
-  "RCT": { lat: -38.1762, lng: -57.6535 },
-  "Punta Viracho": { lat: -38.2862, lng: -57.8135 },
-  "El Muelle": { lat: -38.2762, lng: -57.8235 },
-  "Pompeya": { lat: -38.2662, lng: -57.8335 },
-  "Escollera Necochea (Arena)": { lat: -38.5878, lng: -58.7075 },
-  "El Caño": { lat: -38.5935, lng: -58.7155 },
-  "Karamawi": { lat: -38.6015, lng: -58.7255 },
-  "La Hélice": { lat: -38.5775, lng: -58.6855 },
-  "Monte Pasubio": { lat: -38.5715, lng: -58.6755 }
+  "Playa Grande (Biología)": { lat: -38.0265, lng: -57.5310 },
+  "Playa Grande (El Yacht)": { lat: -38.0312, lng: -57.5325 },
+  "Waikiki": { lat: -38.0705, lng: -57.5450 },
+  "Serena Sur": { lat: -38.0865, lng: -57.5530 },
+  "La Paloma": { lat: -38.0958, lng: -57.5540 },
+  "Varese": { lat: -38.0142, lng: -57.5345 },
+  "Cardiel": { lat: -37.9795, lng: -57.5410 },
+  "Estrada": { lat: -37.9665, lng: -57.5440 },
+  "Sun Rider": { lat: -37.9565, lng: -57.5470 },
+  "Mariano": { lat: -38.0718, lng: -57.5470 },
+  "Honu Beach": { lat: -38.0785, lng: -57.5500 },
+  "El Faro": { lat: -38.0835, lng: -57.5520 },
+  "Luna Roja": { lat: -38.1595, lng: -57.6390 },
+  "Cruz del Sur": { lat: -38.1665, lng: -57.6470 },
+  "RCT": { lat: -38.1765, lng: -57.6570 },
+  "Punta Viracho": { lat: -38.2865, lng: -57.8170 },
+  "El Muelle": { lat: -38.2765, lng: -57.8270 },
+  "Pompeya": { lat: -38.2665, lng: -57.8330 },
+  "Escollera Necochea (Arena)": { lat: -38.5880, lng: -58.7070 },
+  "El Caño": { lat: -38.5938, lng: -58.7150 },
+  "Karamawi": { lat: -38.6018, lng: -58.7250 },
+  "La Hélice": { lat: -38.5778, lng: -58.6850 },
+  "Monte Pasubio": { lat: -38.5718, lng: -58.6750 },
+  "San Clemente (El Muelle)": { lat: -36.3565, lng: -56.6870 },
+  "Santa Teresita": { lat: -36.5415, lng: -56.6870 },
+  "Pinamar (El Muelle)": { lat: -37.1165, lng: -56.8570 },
+  "Villa Gesell": { lat: -37.2565, lng: -56.9670 },
+  "Mar Chiquita": { lat: -37.7565, lng: -57.4270 }
 };
 
 const sanitizeResult = (data: any) => {
@@ -63,14 +68,33 @@ const sanitizeResult = (data: any) => {
       day.bestSpots.forEach((window: any) => {
         if (window.spots) {
           window.spots.forEach((spot: any) => {
-            const dbName = Object.keys(SPOT_COORDINATES).find(name => 
-              spot.name.toLowerCase().includes(name.toLowerCase()) || 
-              name.toLowerCase().includes(spot.name.toLowerCase())
-            );
+            // Normalización agresiva para matching inequívoco
+            const normalize = (s: string) => s.toLowerCase().trim()
+              .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quita acentos
+              .replace(/[^a-z0-9]/g, ""); // Quita todo lo que no sea letra o número
             
-            if (dbName) {
-              spot.lat = SPOT_COORDINATES[dbName].lat;
-              spot.lng = SPOT_COORDINATES[dbName].lng;
+            const normalizedSpotName = normalize(spot.name);
+            
+            let matchedName = null;
+            for (const dbName of Object.keys(SPOT_COORDINATES)) {
+              const dbNormalized = normalize(dbName);
+              
+              if (normalizedSpotName === dbNormalized || 
+                  normalizedSpotName.includes(dbNormalized) || 
+                  dbNormalized.includes(normalizedSpotName)) {
+                matchedName = dbName;
+                break;
+              }
+            }
+            
+            if (matchedName) {
+              spot.name = matchedName;
+              spot.lat = SPOT_COORDINATES[matchedName].lat;
+              spot.lng = SPOT_COORDINATES[matchedName].lng;
+            } else {
+              // Si no hay match, forzamos a una posición segura si las coordenadas de la IA son sospechosas
+              // O simplemente dejamos que la IA intente, pero el sistema de arriba cubre el 99% de los casos reales.
+              console.warn(`No se encontró match para el spot: ${spot.name}`);
             }
           });
         }
@@ -87,25 +111,21 @@ const MOCK_RESULT = {
     {
       date: "2026-03-03",
       dayName: "Martes 3",
-      waterTemp: 21,
-      wetsuit: "3/2mm o Shorty",
-      weather: "Soleado",
-      airTemp: 24,
       forecast: [
-        { time: "Mañana (08:00)", windSpeed: 11, windDirection: "ENE", waveHeight: 0.9, waveDirection: "S", wavePeriod: 10, cloudCover: 40 },
-        { time: "Tarde (17:00)", windSpeed: 18, windDirection: "ENE", waveHeight: 0.7, waveDirection: "S", wavePeriod: 9, cloudCover: 80 }
+        { time: "Mañana (08:00)", windSpeed: 11, windDirection: "NW", waveHeight: 1.2, waveDirection: "S", wavePeriod: 10, cloudCover: 10, weather: "Soleado", airTemp: 22, waterTemp: 20, wetsuit: "3/2mm" },
+        { time: "Tarde (17:00)", windSpeed: 15, windDirection: "E", waveHeight: 0.9, waveDirection: "E", wavePeriod: 7, cloudCover: 60, weather: "Nublado", airTemp: 26, waterTemp: 21, wetsuit: "3/2mm" }
       ],
       bestSpots: [
         {
-          timeWindow: "Mañana (Amanecer a 13:00)",
+          timeWindow: "Mañana",
           spots: [
-            { name: "Playa Grande (El Yacht)", description: "La escollera protege del viento ENE, manteniendo la cara de la ola más limpia.", lat: -38.0312, lng: -57.5332, score: 6 }
+            { name: "Playa Grande (El Yacht)", score: 8, description: "Buenas condiciones con viento offshore suave.", lat: -38.0312, lng: -57.5332 }
           ]
         },
         {
-          timeWindow: "Tarde (13:00 a Atardecer)",
+          timeWindow: "Tarde",
           spots: [
-            { name: "Playa Grande (Biología)", description: "Mejor con viento del N/NW y swell moderado.", lat: -38.0265, lng: -57.5315, score: 7 }
+            { name: "Varese", score: 6, description: "Protegido del viento que empieza a rotar.", lat: -38.0142, lng: -57.5345 }
           ]
         }
       ],
@@ -114,102 +134,61 @@ const MOCK_RESULT = {
   ]
 };
 
-const SYSTEM_INSTRUCTION = `Rol: Sos Surfpoint, un asesor experto en deportes de tabla marítimos (Surf, Bodyboard, Windsurf, Kitesurf, SUP, Wingfoil). Tu rango de acción es EXCLUSIVAMENTE la costa atlántica de la provincia de Buenos Aires y Río Negro, Argentina, abarcando desde San Clemente del Tuyú hasta Carmen de Patagones. NO recomiendes spots en ríos, lagos ni lagunas.
+const SYSTEM_INSTRUCTION = `Rol: Sos Surfpoint, un asesor experto en deportes de tabla marítimos (Surf, Bodyboard, Windsurf, Kitesurf, SUP, Wingfoil). Tu rango de acción es EXCLUSIVAMENTE la costa atlántica de la provincia de Buenos Aires y Río Negro, Argentina.
 
 Reglas de Análisis (El Protocolo Surfpoint):
-- Brevedad (EXTREMA): Para reducir el tiempo de respuesta, mantén las descripciones muy breves (máximo 10 palabras por spot). No generes texto de relleno. El tiempo es oro.
-- Coordenadas Exactas (CRÍTICO): REGLA DE ORO PARA COORDENADAS: LOS PINES DEBEN ESTAR EXACTAMENTE SOBRE LA LÍNEA DE COSTA (LA ARENA), EN EL PUNTO EXACTO DONDE SE ENCUENTRA LA ENTRADA AL MAR O EL PARADOR. NUNCA EN EL AGUA, NUNCA EN EL MEDIO DEL MAR, NUNCA EN EL MALECÓN/ESCOLLERA, NUNCA EN LA CIUDAD. 
-  Usa esta BASE DE DATOS DE SPOTS para máxima precisión. SI EL SPOT ESTÁ EN ESTA LISTA, ES OBLIGATORIO USAR ESTAS COORDENADAS EXACTAS:
+- Grounding (CRÍTICO): Usa \`googleSearch\` para consultar Windguru, Surf-forecast y Surfline.
+  - Busca: "Windguru [Ciudad] hoy", "Surf-forecast [Ciudad]".
+  - Analiza Swell (Dir/Período) y Viento (Dir/Nudos).
+  - DEBES comparar 2 fuentes. Si hay discrepancia, prioriza Windguru.
+- Brevedad (EXTREMA): Máximo 10 palabras por spot. Sin relleno.
+- Coordenadas (REGLA DE ORO): LOS PINES DEBEN ESTAR EN LA ARENA.
+  USA ESTA LISTA OBLIGATORIA:
   - Mar del Plata:
-    - Playa Grande (Biología): -38.0265, -57.5315
-    - Playa Grande (El Yacht): -38.0312, -57.5332
-    - Waikiki: -38.0698, -57.5425
-    - Serena Sur: -38.0862, -57.5475
-    - La Paloma: -38.0895, -57.5415
-    - Varese: -38.0132, -57.5355
-    - Cardiel: -37.9792, -57.5415
-    - Estrada: -37.9662, -57.5445
-    - Sun Rider: -37.9562, -57.5475
-    - Mariano: -38.0715, -57.5435
-    - Honu Beach: -38.0782, -57.5455
-    - El Faro: -38.0832, -57.5465
+    - Playa Grande (Biología): -38.0265, -57.5310
+    - Playa Grande (El Yacht): -38.0312, -57.5325
+    - Varese: -38.0142, -57.5345
+    - Waikiki: -38.0705, -57.5450
+    - Serena Sur: -38.0865, -57.5530
+    - La Paloma: -38.0958, -57.5540
+    - Cardiel: -37.9795, -57.5410
+    - Estrada: -37.9665, -57.5440
+    - Sun Rider: -37.9565, -57.5470
+    - Mariano: -38.0718, -57.5470
+    - Honu Beach: -38.0785, -57.5500
+    - El Faro: -38.0835, -57.5520
   - Chapadmalal:
-    - Luna Roja: -38.1592, -57.6355
-    - Cruz del Sur: -38.1662, -57.6435
-    - RCT: -38.1762, -57.6535
+    - Luna Roja: -38.1595, -57.6390
+    - Cruz del Sur: -38.1665, -57.6470
+    - RCT: -38.1765, -57.6570
   - Miramar:
-    - Punta Viracho: -38.2862, -57.8135
-    - El Muelle: -38.2762, -57.8235
-    - Pompeya: -38.2662, -57.8335
+    - Punta Viracho: -38.2865, -57.8170
+    - El Muelle: -38.2765, -57.8270
+    - Pompeya: -38.2665, -57.8330
   - Necochea:
-    - Escollera Necochea (Arena): -38.5878, -58.7075
-    - El Caño: -38.5935, -58.7155
-    - Karamawi: -38.6015, -58.7255
+    - Escollera Necochea (Arena): -38.5880, -58.7070
+    - El Caño: -38.5938, -58.7150
+    - Karamawi: -38.6018, -58.7250
   - Quequén:
-    - La Hélice: -38.5775, -58.6855
-    - Monte Pasubio: -38.5715, -58.6755
-  - El usuario usará esto para navegar con Google Maps, por lo que la precisión es vital. Sé extremadamente preciso con los decimales.
-- Criterio de Puntuación (CRÍTICO): Sé EXTREMADAMENTE exigente con el puntaje (score 1-10). No regales puntos.
-  - Surf & Bodyboard:
-    - 10 (ÉPICO): Tubos perfectos, >2m, viento offshore suave, período >12s.
-    - 9 (CASI PERFECTO): Muy prolijo, >2m, offshore, consistente.
-    - 8 (INCREÍBLE): Limpio, 1.5m a 2m, secciones largas, offshore o calma.
-    - 7 (MUY BUENO): Limpio, 1m a 1.5m, algunas secciones, viento suave.
-    - 6 (SURFEABLE / OK): 0.5m a 1m, algo de viento cruzado o choppy, pero con forma.
-    - 5 (MEDIOCRE): Olas chicas (<0.5m) o desordenadas, pero se puede barrenar algo.
-    - 4 (POBRE): Cerrando (mucha espuma), viento onshore fuerte, o casi plato.
-    - 3 (MUY POBRE): Solo espuma, onshore fuerte, difícil de pasar la rompiente.
-    - 2 (MALO): Condiciones nulas o peligrosas (mar pasado o tormenta).
-    - 1 (IMPOSIBLE): Lago total o sudestada destructiva.
-  - Windsurf, Kitesurf & Wingfoil:
-    - 10 (ÉPICO): Viento constante 20-28 nudos, Side-shore, agua plana o rampas prolijas.
-    - 9 (EXCELENTE): Viento 18-25 nudos, muy estable, dirección ideal.
-    - 8 (INCREÍBLE): Viento 15-20 nudos, estable, buenas condiciones de seguridad.
-    - 7 (MUY BUENO): Viento 13-18 nudos, algo de racha pero muy navegable.
-    - 6 (NAVEGABLE): 12-15 nudos (límite equipo chico) o viento >30 nudos (técnico).
-    - 5 (AFEITANDO): Viento racheado o al límite del planeo (10-12 nudos).
-    - 4 (POBRE): Viento muy racheado, dirección Onshore o <10 nudos.
-    - 3 (MUY POBRE): Viento de tierra (Offshore) fuerte (peligroso) o ráfagas nulas.
-    - 2 (MALO): Calma total o ráfagas de temporal.
-    - 1 (NULO): Sin una gota de viento.
-  - SUP (Travesía / Paseo):
-    - 10 (ÉPICO): Mar "aceite" (calma total), sin viento, visibilidad perfecta.
-    - 9 (EXCELENTE): Brisa imperceptible, agua muy cristalina y plana.
-    - 8 (INCREÍBLE): Viento <5 nudos, olas mínimas y ordenadas.
-    - 7 (MUY BUENO): Viento suave, algo de movimiento pero muy estable.
-    - 6 (REMABLE): Viento 8-10 nudos, genera deriva y requiere esfuerzo constante.
-    - 5 (EXIGENTE): Viento 10-12 nudos, el remo se pone pesado contra el viento.
-    - 4 (POBRE): Viento fuerte, imposible avanzar contra corriente o mar revuelto.
-    - 3 (MUY POBRE): Viento de tierra fuerte (te saca mar adentro) o picado molesto.
-    - 2 (MALO): Condiciones de temporal o ráfagas peligrosas.
-    - 1 (PELIGROSO): Prohibido entrar.
-- Playas Prohibidas (CRÍTICO): NUNCA RECOMIENDES "La Perla" en Mar del Plata para Surf o Bodyboard. Es una playa muy pequeña y con una forma que apacigua mucho la ola. Evita siempre recomendar playas pequeñas, muy cerradas o con rompeolas que anulen el swell para deportes de ola.
-- Diversidad de Spots (CRÍTICO): NO te limites a Playa Grande. Si las condiciones son buenas, prioriza otros points para evitar el crowd y encontrar mejores olas:
-  - Serena Sur (Mar del Plata): Excelente con swell del S/SE y viento del N/NW. Es una ola más larga y amigable.
-  - Chapadmalal (Luna Roja, Cruz del Sur, RCT): Maneja swells grandes mucho mejor que Playa Grande. Ideal cuando el mar está pasado en el centro.
-  - Miramar (Punta Viracho, El Muelle): Una alternativa de calidad superior cuando Mar del Plata está saturado o cerrando.
-  - Waikiki: RECOMIENDA SOLO para Longboard o principiantes, o si el swell es masivo del Sur y es el único lugar que aguanta. No es un spot de performance para shortboard.
-- Resultados por Día: DEBES generar un análisis completo (pronóstico, spots y veredicto) para CADA UNO de los días dentro del rango de fechas solicitado.
+    - La Hélice: -38.5778, -58.6850
+    - Monte Pasubio: -38.5718, -58.6750
+- Criterio de Puntuación: Sé MUY exigente (1-10).
+- Diversidad: No te quedes solo en Playa Grande. Recomienda Serena Sur con viento N/NW, Varese con viento S fuerte, etc.
 - Horario Lógico (CRÍTICO): El análisis DEBE dividirse exactamente en 2 franjas horarias:
-  1. Mañana: Desde el amanecer hasta las 13:00 (Referencia: 08:00)
-  2. Tarde: Desde las 13:00 hasta el anochecer (Referencia: 17:00)
-- Filtro de Tiempo (CRÍTICO): Si la consulta se realiza después de las 14:00 (hora actual proporcionada), NO devuelvas información de la "Mañana" para el día de hoy, ya que ya pasó. Empieza directamente con la "Tarde".
-- "forecast": Array con el pronóstico por horas de ESE día. DEBE tener exactamente 2 objetos con "time" siendo: "Mañana (08:00)" y "Tarde (17:00)". NO incluyas la temperatura en el forecast detallado.
-- "bestSpots": Array de spots recomendados para ESE día. DEBE tener exactamente 2 objetos con "timeWindow" siendo: "Mañana (Amanecer a 13:00)" y "Tarde (13:00 a Atardecer)".
-- Lógica de Spots Específicos (CRÍTICO):
-  - Playa Grande (Mar del Plata): 
-    - "El Yacht" es mejor con vientos del E, NE o SE suave, ya que la escollera protege. Es para un nivel más avanzado.
-    - "Biología" es mejor cuando el viento es del N, NW o W (offshore) y el swell no es masivo. Es más amigable y suele estar más limpio si el Yacht está picado por viento cruzado.
-    - Si el viento es del Norte, RECOMIENDA Biología sobre el Yacht. Si el viento es del Este/Sudeste, el Yacht suele tener mejor forma por el reparo de la piedra.
-- Veredicto (CRÍTICO): El veredicto debe ser una recomendación experta, CORTA Y AL PIE. 
-  1. Identifica el MEJOR spot del día.
-  2. DEBES empezar el veredicto nombrando el spot ganador y resaltándolo en negrita usando Markdown (ej: "El point del día para esta jornada es **Playa Grande (El Yacht)**...").
-  3. No te extiendas en detalles técnicos innecesarios (como grados exactos del viento). Lo que le interesa al usuario es si va a cambiar el viento y se va a poner feo, o si se va a poner bueno.
-  4. Si las condiciones son malas, ADVIÉRTELO claramente.
-- Temperatura y Clima: DEBES estimar la temperatura del aire ("airTemp") y el estado del clima ("weather", ej: "Soleado", "Nublado", "Lluvia", "Tormenta"). También estima la temperatura del agua y recomienda el traje adecuado.
-- Fuentes de Consulta (OBLIGATORIO): DEBES usar Google Search para obtener datos de Windguru, Surfline, Windy, estadodelmar.com.ar y lineup.surf.
-- Consistencia: Los reportes para la misma fecha y lugar deben ser consistentes. Usa los datos reales encontrados en la búsqueda.
-- Tono: Técnico pero cercano. Un lenguaje de "parador de playa" pero con la precisión de un radar náutico.
+  1. Mañana (Ref: 08:00)
+  2. Tarde (Ref: 17:00)
+- Filtro de Tiempo (CRÍTICO): Si la consulta se realiza tarde en el día (después de las 14:00), omite la franja de la Mañana para el día de hoy.
+- Clima (Simplificado): Usa EXCLUSIVAMENTE "Soleado", "Nublado", "Lluvia" o "Tormenta". No uses "Parcialmente nublado" ni términos largos.
+- "forecast": Array de 2 objetos. Cada uno DEBE incluir:
+  - "time": "Mañana (08:00)" o "Tarde (17:00)"
+  - "weather": "Soleado", "Nublado", "Lluvia" o "Tormenta"
+  - "airTemp": número
+  - "waterTemp": número
+  - "wetsuit": string
+  - ... (viento, olas, etc.)
+- "bestSpots": Array de 2 objetos: "Mañana" y "Tarde".
+- Veredicto: Corto y al pie. Nombra el spot ganador en negrita.
+- Tono: Técnico y directo.
 
 El output para el usuario debe ser un objeto JSON que contenga:
 1. "greeting": Un saludo inicial. DEBE empezar con "¡Aloha, [apodo del deporte]!" (ej: rider, surfer, kiter) seguido de "Te compartimos el análisis para tu sesión de [Deporte] en [Ubicación]."
@@ -221,8 +200,8 @@ El output para el usuario debe ser un objeto JSON que contenga:
    - "wetsuit": Recomendación de traje (ej: "3/2mm")
    - "weather": Estado del clima (ej: "Soleado", "Parcialmente Nublado", "Nublado", "Lluvia")
    - "airTemp": Temperatura del aire estimada (ej: 22)
-   - "forecast": Array con el pronóstico por horas de ESE día. DEBE tener exactamente 2 objetos correspondientes a: "Mañana (08:00)" y "Tarde (17:00)".
-   - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. DEBE tener exactamente 2 objetos con "timeWindow" siendo: "Mañana (Amanecer a 13:00)" y "Tarde (13:00 a Atardecer)".
+   - "forecast": Array con el pronóstico por horas de ESE día. DEBE tener exactamente 4 objetos correspondientes a: "07:00", "11:00", "15:00" y "19:00".
+   - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. DEBE tener exactamente 4 objetos correspondientes a: "Mañana Temprano", "Mañana Tarde", "Tarde Temprano" y "Tarde Noche".
    - "verdict": Veredicto experto y decidido.`;
 
 const TimePicker = ({ value, onChange, minTime, className = "" }: { value: string, onChange: (val: string) => void, minTime?: string, className?: string }) => {
@@ -469,48 +448,43 @@ const getCloudColor = (cover: number) => {
   return { bg: 'bg-slate-800', text: 'text-white' }; // Nublado
 };
 
-const InfoAgua = ({ waterTemp, wetsuit, weather, airTemp }: { waterTemp: number, wetsuit: string, weather?: string, airTemp?: number }) => {
+const InfoAgua = ({ forecast }: { forecast: any[] }) => {
   const getWeatherIcon = (condition: string = "") => {
     const c = condition.toLowerCase();
-    if (c.includes('sol') || c.includes('despejado')) return <Sun size={24} className="text-yellow-500" />;
-    if (c.includes('lluvia') || c.includes('tormenta')) return <CloudRain size={24} className="text-blue-400" />;
-    if (c.includes('nublado')) return <Cloud size={24} className="text-slate-400" />;
-    return <Sun size={24} className="text-yellow-500" />;
+    if (c.includes('sol') || c.includes('despejado')) return <Sun size={20} className="text-yellow-500" />;
+    if (c.includes('lluvia') || c.includes('tormenta')) return <CloudRain size={20} className="text-blue-400" />;
+    if (c.includes('nublado')) return <Cloud size={20} className="text-slate-400" />;
+    return <Sun size={20} className="text-yellow-500" />;
   };
 
   return (
-    <div className="bg-slate-50/60 grid grid-cols-2 md:grid-cols-4 items-center gap-4 border-t border-slate-100/50 py-6 px-8">
-      <div className="flex flex-col items-center gap-1.5">
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Clima</span>
-        <div className="flex items-center gap-2 text-slate-900 font-black text-2xl">
-          {getWeatherIcon(weather)}
-          <span className="text-lg md:text-xl truncate max-w-[100px]">{weather || 'Soleado'}</span>
-        </div>
-      </div>
-      
-      <div className="flex flex-col items-center gap-1.5">
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Temp. Aire</span>
-        <div className="flex items-center gap-2 text-orange-600 font-black text-2xl">
-          <Thermometer size={24} className="text-orange-500" />
-          {airTemp || 22}°C
-        </div>
-      </div>
+    <div className="bg-slate-50/60 border-t border-slate-100/50 py-4 px-6 space-y-4">
+      {forecast.map((p, idx) => (
+        <div key={idx} className="grid grid-cols-2 md:grid-cols-4 items-center gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest w-16">{idx === 0 ? 'MAÑANA' : 'TARDE'}</span>
+            <div className="flex items-center gap-2 text-slate-900 font-bold">
+              {getWeatherIcon(p.weather)}
+              <span className="text-sm whitespace-nowrap">{p.weather || 'Soleado'}</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2 text-orange-600 font-bold">
+            <Thermometer size={18} className="text-orange-500" />
+            <span className="text-sm">{p.airTemp || 22}°C</span>
+          </div>
 
-      <div className="flex flex-col items-center gap-1.5">
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Temp. Agua</span>
-        <div className="flex items-center gap-2 text-blue-700 font-black text-2xl">
-          <Droplet size={24} className="text-blue-500" />
-          {waterTemp}°C
-        </div>
-      </div>
+          <div className="flex items-center gap-2 text-blue-700 font-bold">
+            <Droplet size={18} className="text-blue-500" />
+            <span className="text-sm">{p.waterTemp}°C</span>
+          </div>
 
-      <div className="flex flex-col items-center gap-1.5">
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Traje</span>
-        <div className="flex items-center gap-2 text-orange-700 font-black text-xl md:text-2xl">
-          <Shirt size={24} className="text-orange-500" />
-          <span className="truncate max-w-[120px]">{wetsuit}</span>
+          <div className="flex items-center gap-2 text-orange-700 font-bold">
+            <Shirt size={18} className="text-orange-500" />
+            <span className="text-sm whitespace-nowrap">{p.wetsuit}</span>
+          </div>
         </div>
-      </div>
+      ))}
     </div>
   );
 };
@@ -522,9 +496,9 @@ const EstadoDeLasCosas = ({ forecast, astronomy }: { forecast: any[], astronomy:
   const periods = forecast;
 
   const getTimeRange = (timeLabel: string) => {
-    if (timeLabel.includes('Mañana')) return 'Amanecer a 13:00';
-    if (timeLabel.includes('Tarde')) return '13:00 a Atardecer';
-    return '';
+    if (timeLabel.includes('08:00')) return 'Mañana';
+    if (timeLabel.includes('17:00')) return 'Tarde';
+    return timeLabel;
   };
 
   return (
@@ -613,6 +587,42 @@ const EstadoDeLasCosas = ({ forecast, astronomy }: { forecast: any[], astronomy:
                   </tr>
                   <tr>
                     <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+                      <Cloud size={16} className="text-orange-600" /> Clima
+                    </td>
+                    {periods.map((p, i) => (
+                      <td key={i} className="px-6 py-2 text-center">
+                        <div className="inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base bg-slate-50 text-slate-700">
+                          {p.weather || 'Soleado'}
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+                      <Thermometer size={16} className="text-orange-600" /> Aire
+                    </td>
+                    {periods.map((p, i) => (
+                      <td key={i} className="px-6 py-2 text-center">
+                        <div className="inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base bg-orange-50 text-orange-700">
+                          {p.airTemp}°C
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
+                      <Droplet size={16} className="text-orange-600" /> Agua
+                    </td>
+                    {periods.map((p, i) => (
+                      <td key={i} className="px-6 py-2 text-center">
+                        <div className="inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base bg-blue-50 text-blue-700">
+                          {p.waterTemp}°C
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
                       <Cloud size={16} className="text-orange-600" /> Nubes
                     </td>
                     {periods.map((p, i) => {
@@ -659,7 +669,7 @@ const MapView = ({ spots, activeSpot, onSpotClick }: { spots: any[], activeSpot:
                 <h4 className="font-bold text-slate-900">{spot.name}</h4>
                 <p className="text-xs text-slate-600 mb-2">{spot.description}</p>
                 <a 
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`}
+                  href={`https://www.google.com/maps/search/?api=1&query=${spot.lat},${spot.lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[10px] font-black uppercase text-orange-600 hover:underline flex items-center gap-1"
@@ -1073,25 +1083,25 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
                   properties: {
                     date: { type: Type.STRING, description: "Fecha (ej: 2026-03-03)" },
                     dayName: { type: Type.STRING, description: "Nombre del día (ej: Martes 3)" },
-                    waterTemp: { type: Type.NUMBER, description: "Temperatura del agua estimada en °C" },
-                    wetsuit: { type: Type.STRING, description: "Recomendación de traje (ej: 3/2mm)" },
-                    weather: { type: Type.STRING, description: "Estado del clima (ej: Soleado, Nublado)" },
-                    airTemp: { type: Type.NUMBER, description: "Temperatura del aire estimada en °C" },
                     forecast: {
                       type: Type.ARRAY,
-                      description: "Pronóstico detallado por horas para este día. Debe incluir las franjas horarias que coincidan con el rango solicitado.",
+                      description: "Pronóstico detallado por horas para este día. Debe incluir exactamente 2 franjas horarias: Mañana (08:00) y Tarde (17:00).",
                       items: {
                         type: Type.OBJECT,
                         properties: {
-                          time: { type: Type.STRING, description: "Período y Hora. DEBE ser exactamente uno de: 'Mañana (08:00)', 'Tarde (17:00)'" },
+                          time: { type: Type.STRING, description: "Hora de referencia. DEBE ser uno de: 'Mañana (08:00)', 'Tarde (17:00)'" },
                           windSpeed: { type: Type.NUMBER, description: "Velocidad del viento en nudos" },
                           windDirection: { type: Type.STRING, description: "Dirección del viento (ej: NW, S, SE)" },
                           waveHeight: { type: Type.NUMBER, description: "Altura de la ola en metros" },
                           waveDirection: { type: Type.STRING, description: "Dirección de la ola (ej: S, SE, E)" },
                           wavePeriod: { type: Type.NUMBER, description: "Período de la ola en segundos" },
-                          cloudCover: { type: Type.NUMBER, description: "Porcentaje de nubosidad (0 a 100)" }
+                          cloudCover: { type: Type.NUMBER, description: "Porcentaje de nubosidad (0 a 100)" },
+                          weather: { type: Type.STRING, description: "Estado del clima. DEBE ser uno de: 'Soleado', 'Nublado', 'Lluvia', 'Tormenta'" },
+                          airTemp: { type: Type.NUMBER, description: "Temperatura del aire estimada en °C" },
+                          waterTemp: { type: Type.NUMBER, description: "Temperatura del agua estimada en °C" },
+                          wetsuit: { type: Type.STRING, description: "Recomendación de traje (ej: 3/2mm)" }
                         },
-                        required: ["time", "windSpeed", "windDirection", "waveHeight", "waveDirection", "wavePeriod", "cloudCover"]
+                        required: ["time", "windSpeed", "windDirection", "waveHeight", "waveDirection", "wavePeriod", "cloudCover", "weather", "airTemp", "waterTemp", "wetsuit"]
                       }
                     },
                     bestSpots: {
@@ -1100,7 +1110,7 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
                       items: {
                         type: Type.OBJECT,
                         properties: {
-                          timeWindow: { type: Type.STRING, description: "Franja horaria. DEBE ser exactamente uno de: 'Mañana (Amanecer a 13:00)', 'Tarde (13:00 a Atardecer)'" },
+                          timeWindow: { type: Type.STRING, description: "Franja horaria. DEBE ser uno de: 'Mañana', 'Tarde'" },
                           spots: {
                             type: Type.ARRAY,
                             description: "Spots recomendados en este horario, ordenados por calidad.",
@@ -1122,7 +1132,7 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
                     },
                     verdict: { type: Type.STRING, description: "Veredicto experto y decidido." }
                   },
-                  required: ["date", "dayName", "waterTemp", "wetsuit", "weather", "airTemp", "forecast", "bestSpots", "verdict"]
+                  required: ["date", "dayName", "forecast", "bestSpots", "verdict"]
                 }
               }
             },
@@ -1420,6 +1430,11 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
                       )}
                     </button>
                   </form>
+
+                  <div className="mt-12 space-y-4">
+                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] text-center">Espacio Publicitario</p>
+                    <AdSlot className="h-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl" />
+                  </div>
                 </motion.div>
               </div>
             </main>
@@ -1453,7 +1468,12 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
               <div className="w-24" /> {/* Spacer to balance the layout */}
             </header>
 
-            <div className="max-w-4xl mx-auto px-4 py-12 space-y-12" ref={resultsRef}>
+            <div className="max-w-4xl mx-auto px-4 py-8 space-y-12" ref={resultsRef}>
+              <div className="space-y-4">
+                <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] text-center">Espacio Publicitario</p>
+                <AdSlot className="h-24 md:h-32 bg-white border-2 border-dashed border-slate-100 rounded-3xl mb-8" />
+              </div>
+              
               {/* Greeting */}
               {result?.greeting && (
                 <motion.div 
@@ -1506,12 +1526,15 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
 
                       {/* Info Agua (Integrated - Bleeding to edges) */}
                       <InfoAgua 
-                        waterTemp={result.dailyResults[selectedDayIndex].waterTemp}
-                        wetsuit={result.dailyResults[selectedDayIndex].wetsuit}
-                        weather={result.dailyResults[selectedDayIndex].weather}
-                        airTemp={result.dailyResults[selectedDayIndex].airTemp}
+                        forecast={result.dailyResults[selectedDayIndex].forecast}
                       />
                     </div>
+
+                    {/* Pronóstico detallado (Estado de las cosas) */}
+                    <EstadoDeLasCosas 
+                      forecast={result.dailyResults[selectedDayIndex].forecast} 
+                      astronomy={result.astronomy}
+                    />
 
                     {/* Spots Grid (Moved up) */}
                     <div className="space-y-6">
@@ -1549,7 +1572,7 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
                                   
                                   <div className="pt-4 border-t border-orange-200">
                                     <a 
-                                      href={`https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`}
+                                      href={`https://www.google.com/maps/search/?api=1&query=${spot.lat},${spot.lng}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="text-xs font-black uppercase text-orange-600 flex items-center gap-1 hover:underline"
@@ -1568,14 +1591,6 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
 
                     <AdSlot className="h-32" />
 
-                    {/* Pronóstico detallado (Estado de las cosas) */}
-                    <EstadoDeLasCosas 
-                      forecast={result.dailyResults[selectedDayIndex].forecast} 
-                      astronomy={result.astronomy}
-                    />
-
-                    <AdSlot className="h-32" />
-
                     {/* Map View */}
                     <div className="space-y-6">
                       <div className="flex items-center gap-3 text-slate-900">
@@ -1590,6 +1605,8 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
                     </div>
 
                     <AdSlot className="h-32 mt-8" />
+                    
+                    <CostEstimator stats={usageStats} hasCustomKey={!!process.env.API_KEY} />
                   </motion.div>
                 )}
               </AnimatePresence>

@@ -73,24 +73,24 @@ Reglas de Análisis (El Protocolo Surfpoint):
   - Mar del Plata:
     - Playa Grande (Biología): -38.0265, -57.5315
     - Playa Grande (El Yacht): -38.0312, -57.5332
-    - Waikiki: -38.0698, -57.5475
-    - Serena Sur: -38.0862, -57.5595
-    - La Paloma: -38.0902, -57.5625
-    - Varese: -38.0132, -57.5375
-    - Cardiel: -37.9792, -57.5435
-    - Estrada: -37.9662, -57.5465
-    - Sun Rider: -37.9562, -57.5495
-    - Mariano: -38.0662, -57.5475
-    - Honu Beach: -38.0782, -57.5525
-    - El Faro: -38.0832, -57.5555
+    - Waikiki: -38.0698, -57.5455
+    - Serena Sur: -38.0862, -57.5535
+    - La Paloma: -38.0955, -57.5545
+    - Varese: -38.0132, -57.5355
+    - Cardiel: -37.9792, -57.5415
+    - Estrada: -37.9662, -57.5445
+    - Sun Rider: -37.9562, -57.5475
+    - Mariano: -38.0662, -57.5455
+    - Honu Beach: -38.0782, -57.5505
+    - El Faro: -38.0832, -57.5525
   - Chapadmalal:
-    - Luna Roja: -38.1592, -57.6455
-    - Cruz del Sur: -38.1662, -57.6535
-    - RCT: -38.1762, -57.6635
+    - Luna Roja: -38.1592, -57.6395
+    - Cruz del Sur: -38.1662, -57.6475
+    - RCT: -38.1762, -57.6575
   - Miramar:
-    - Punta Viracho: -38.2862, -57.8235
-    - El Muelle: -38.2762, -57.8335
-    - Pompeya: -38.2662, -57.8435
+    - Punta Viracho: -38.2862, -57.8175
+    - El Muelle: -38.2762, -57.8275
+    - Pompeya: -38.2662, -57.8375
   - Necochea:
     - Escollera Necochea (Arena): -38.5878, -58.7075
     - El Caño: -38.5935, -58.7155

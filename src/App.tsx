@@ -30,34 +30,34 @@ let DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 const SPOT_COORDINATES: Record<string, { lat: number, lng: number }> = {
-  "Playa Grande (Biología)": { lat: -38.0265, lng: -57.5310 },
-  "Playa Grande (El Yacht)": { lat: -38.0312, lng: -57.5325 },
-  "Waikiki": { lat: -38.0705, lng: -57.5450 },
-  "Serena Sur": { lat: -38.0865, lng: -57.5530 },
-  "La Paloma": { lat: -38.0958, lng: -57.5540 },
-  "Varese": { lat: -38.0142, lng: -57.5345 },
-  "Cardiel": { lat: -37.9795, lng: -57.5410 },
-  "Estrada": { lat: -37.9665, lng: -57.5440 },
-  "Sun Rider": { lat: -37.9565, lng: -57.5470 },
-  "Mariano": { lat: -38.0718, lng: -57.5470 },
-  "Honu Beach": { lat: -38.0785, lng: -57.5500 },
-  "El Faro": { lat: -38.0835, lng: -57.5520 },
-  "Luna Roja": { lat: -38.1595, lng: -57.6390 },
-  "Cruz del Sur": { lat: -38.1665, lng: -57.6470 },
-  "RCT": { lat: -38.1765, lng: -57.6570 },
-  "Punta Viracho": { lat: -38.2865, lng: -57.8170 },
-  "El Muelle": { lat: -38.2765, lng: -57.8270 },
-  "Pompeya": { lat: -38.2665, lng: -57.8330 },
-  "Escollera Necochea (Arena)": { lat: -38.5880, lng: -58.7070 },
-  "El Caño": { lat: -38.5938, lng: -58.7150 },
-  "Karamawi": { lat: -38.6018, lng: -58.7250 },
-  "La Hélice": { lat: -38.5778, lng: -58.6850 },
-  "Monte Pasubio": { lat: -38.5718, lng: -58.6750 },
-  "San Clemente (El Muelle)": { lat: -36.3565, lng: -56.6870 },
-  "Santa Teresita": { lat: -36.5415, lng: -56.6870 },
-  "Pinamar (El Muelle)": { lat: -37.1165, lng: -56.8570 },
-  "Villa Gesell": { lat: -37.2565, lng: -56.9670 },
-  "Mar Chiquita": { lat: -37.7565, lng: -57.4270 }
+  "Playa Grande (Biología)": { lat: -38.0260, lng: -57.5305 },
+  "Playa Grande (El Yacht)": { lat: -38.0310, lng: -57.5320 },
+  "Waikiki": { lat: -38.0700, lng: -57.5440 },
+  "Serena Sur": { lat: -38.0860, lng: -57.5525 },
+  "Acantilados (La Paloma)": { lat: -38.0955, lng: -57.5535 },
+  "Varese": { lat: -38.0130, lng: -57.5315 },
+  "Cardiel": { lat: -37.9790, lng: -57.5405 },
+  "Estrada": { lat: -37.9660, lng: -57.5435 },
+  "Sun Rider": { lat: -37.9560, lng: -57.5465 },
+  "Mariano": { lat: -38.0715, lng: -57.5465 },
+  "Honu Beach": { lat: -38.0780, lng: -57.5495 },
+  "El Faro": { lat: -38.0830, lng: -57.5515 },
+  "Luna Roja": { lat: -38.1590, lng: -57.6385 },
+  "Cruz del Sur": { lat: -38.1660, lng: -57.6465 },
+  "RCT": { lat: -38.1760, lng: -57.6565 },
+  "Punta Viracho": { lat: -38.2860, lng: -57.8165 },
+  "El Muelle": { lat: -38.2760, lng: -57.8265 },
+  "Pompeya": { lat: -38.2660, lng: -57.8325 },
+  "Escollera Necochea (Arena)": { lat: -38.5875, lng: -58.7065 },
+  "El Caño": { lat: -38.5935, lng: -58.7145 },
+  "Karamawi": { lat: -38.6015, lng: -58.7245 },
+  "La Hélice": { lat: -38.5775, lng: -58.6845 },
+  "Monte Pasubio": { lat: -38.5715, lng: -58.6745 },
+  "San Clemente (El Muelle)": { lat: -36.3560, lng: -56.6865 },
+  "Santa Teresita": { lat: -36.5410, lng: -56.6865 },
+  "Pinamar (El Muelle)": { lat: -37.1160, lng: -56.8565 },
+  "Villa Gesell": { lat: -37.2560, lng: -56.9665 },
+  "Mar Chiquita": { lat: -37.7560, lng: -57.4265 }
 };
 
 const sanitizeResult = (data: any) => {
@@ -145,18 +145,18 @@ Reglas de Análisis (El Protocolo Surfpoint):
 - Coordenadas (REGLA DE ORO): LOS PINES DEBEN ESTAR EN LA ARENA.
   USA ESTA LISTA OBLIGATORIA:
   - Mar del Plata:
-    - Playa Grande (Biología): -38.0265, -57.5310
-    - Playa Grande (El Yacht): -38.0312, -57.5325
-    - Varese: -38.0142, -57.5345
-    - Waikiki: -38.0705, -57.5450
-    - Serena Sur: -38.0865, -57.5530
-    - La Paloma: -38.0958, -57.5540
-    - Cardiel: -37.9795, -57.5410
-    - Estrada: -37.9665, -57.5440
-    - Sun Rider: -37.9565, -57.5470
-    - Mariano: -38.0718, -57.5470
-    - Honu Beach: -38.0785, -57.5500
-    - El Faro: -38.0835, -57.5520
+    - Playa Grande (Biología): -38.0260, -57.5305
+    - Playa Grande (El Yacht): -38.0310, -57.5320
+    - Varese: -38.0130, -57.5315
+    - Waikiki: -38.0700, -57.5440
+    - Serena Sur: -38.0860, -57.5525
+    - Acantilados (La Paloma): -38.0955, -57.5535
+    - Cardiel: -37.9790, -57.5405
+    - Estrada: -37.9660, -57.5435
+    - Sun Rider: -37.9560, -57.5465
+    - Mariano: -38.0715, -57.5465
+    - Honu Beach: -38.0780, -57.5495
+    - El Faro: -38.0830, -57.5515
   - Chapadmalal:
     - Luna Roja: -38.1595, -57.6390
     - Cruz del Sur: -38.1665, -57.6470
@@ -1265,7 +1265,11 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
 
             {/* Main Form Hero */}
             <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-12">
-                  <div className="w-full max-w-4xl text-center mb-12">
+                  <div className="w-full max-w-4xl text-center mb-8">
+                    <div className="mb-8 space-y-4">
+                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] text-center">Espacio Publicitario</p>
+                      <AdSlot className="h-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl" />
+                    </div>
                     <h1 
                       className="text-4xl sm:text-5xl md:text-7xl font-display font-extrabold text-slate-900 mb-6 leading-[0.9] tracking-tight uppercase italic whitespace-nowrap inline-block"
                     >
@@ -1430,11 +1434,6 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
                       )}
                     </button>
                   </form>
-
-                  <div className="mt-12 space-y-4">
-                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] text-center">Espacio Publicitario</p>
-                    <AdSlot className="h-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl" />
-                  </div>
                 </motion.div>
               </div>
             </main>

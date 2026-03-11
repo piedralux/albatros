@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
-import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud, CloudRain, Droplet, ArrowRight, Sun, Moon, AlertCircle, ArrowDown, Shirt, Star, Search } from 'lucide-react';
+import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud, CloudRain, Droplet, ArrowRight, Sun, Moon, AlertCircle, ArrowDown, Shirt, Star, Search, Cpu } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -30,34 +30,76 @@ let DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 const SPOT_COORDINATES: Record<string, { lat: number, lng: number }> = {
+  // --- MAR DEL PLATA ---
+  // Norte
+  "Sun Rider": { lat: -37.9560, lng: -57.5465 },
+  "Estrada": { lat: -37.9660, lng: -57.5435 },
+  "Cardiel": { lat: -37.9790, lng: -57.5405 },
+  
+  // La Perla
+  "Alfonsina": { lat: -37.9910, lng: -57.5465 },
+  "Saint Michel": { lat: -37.9930, lng: -57.5455 },
+  "San Sebastián": { lat: -37.9950, lng: -57.5445 },
+  "Alicante": { lat: -37.9970, lng: -57.5435 },
+  
+  // Centro
+  "Playa Popular": { lat: -38.0030, lng: -57.5415 },
+  "Punta Iglesia": { lat: -38.0010, lng: -57.5425 },
+  "Cabo Corrientes": { lat: -38.0160, lng: -57.5290 },
+  "Varese": { lat: -38.0130, lng: -57.5315 },
+  
+  // Playa Grande
   "Playa Grande (Biología)": { lat: -38.0260, lng: -57.5305 },
   "Playa Grande (El Yacht)": { lat: -38.0310, lng: -57.5320 },
-  "Waikiki": { lat: -38.0700, lng: -57.5440 },
-  "Serena Sur": { lat: -38.0860, lng: -57.5525 },
-  "Acantilados (La Paloma)": { lat: -38.0955, lng: -57.5535 },
-  "Varese": { lat: -38.0130, lng: -57.5315 },
-  "Cardiel": { lat: -37.9790, lng: -57.5405 },
-  "Estrada": { lat: -37.9660, lng: -57.5435 },
-  "Sun Rider": { lat: -37.9560, lng: -57.5465 },
-  "Mariano": { lat: -38.0715, lng: -57.5465 },
-  "Honu Beach": { lat: -38.0780, lng: -57.5495 },
-  "El Faro": { lat: -38.0830, lng: -57.5515 },
-  "Luna Roja": { lat: -38.1590, lng: -57.6385 },
-  "Cruz del Sur": { lat: -38.1660, lng: -57.6465 },
-  "RCT": { lat: -38.1760, lng: -57.6565 },
-  "Punta Viracho": { lat: -38.2860, lng: -57.8165 },
-  "El Muelle": { lat: -38.2760, lng: -57.8265 },
-  "Pompeya": { lat: -38.2660, lng: -57.8325 },
-  "Escollera Necochea (Arena)": { lat: -38.5875, lng: -58.7065 },
-  "El Caño": { lat: -38.5935, lng: -58.7145 },
-  "Karamawi": { lat: -38.6015, lng: -58.7245 },
-  "La Hélice": { lat: -38.5775, lng: -58.6845 },
-  "Monte Pasubio": { lat: -38.5715, lng: -58.6745 },
+  "Playa Grande (Escollera)": { lat: -38.0330, lng: -57.5330 },
+  
+  // Punta Mogotes (Complejo)
+  "Punta Mogotes (Balneario 1)": { lat: -38.0480, lng: -57.5410 },
+  "Punta Mogotes (Balneario 12)": { lat: -38.0600, lng: -57.5430 },
+  "Punta Mogotes (Balneario 24)": { lat: -38.0720, lng: -57.5450 },
+  
+  // Sur (The "Point")
+  "Waikiki": { lat: -38.0831, lng: -57.5442 },
+  "Mariano": { lat: -38.0850, lng: -57.5460 },
+  "Honu Beach": { lat: -38.0880, lng: -57.5480 },
+  "El Faro": { lat: -38.0910, lng: -57.5500 },
+  "La Serena": { lat: -38.0950, lng: -57.5520 },
+  "Acantilados": { lat: -38.1050, lng: -57.5550 },
+  "Luna Roja": { lat: -38.1601, lng: -57.6391 },
+  "Cruz del Sur": { lat: -38.1665, lng: -57.6470 },
+  "RCT": { lat: -38.1765, lng: -57.6570 },
+  "Siempre Verde": { lat: -38.1850, lng: -57.6650 },
+  
+  // --- MIRAMAR ---
+  "Miramar (El Muelle)": { lat: -38.2760, lng: -57.8265 },
+  "Miramar (Punta Viracho)": { lat: -38.2860, lng: -57.8165 },
+  "Miramar (Pompeya)": { lat: -38.2660, lng: -57.8325 },
+  "Miramar (El Chiringuito)": { lat: -38.2950, lng: -57.8050 },
+
+  // --- NECOCHEA & QUEQUÉN ---
+  "Quequén (Monte Pasubio)": { lat: -38.5715, lng: -58.6745 },
+  "Quequén (La Hélice)": { lat: -38.5775, lng: -58.6845 },
+  "Quequén (Escollera)": { lat: -38.5750, lng: -58.6900 },
+  "Necochea (Escollera)": { lat: -38.5875, lng: -58.7065 },
+  "Necochea (El Caño)": { lat: -38.5935, lng: -58.7145 },
+  "Necochea (Karamawi)": { lat: -38.6015, lng: -58.7245 },
+
+  // Costa Atlántica Norte
   "San Clemente (El Muelle)": { lat: -36.3560, lng: -56.6865 },
   "Santa Teresita": { lat: -36.5410, lng: -56.6865 },
+  "San Bernardo": { lat: -36.6860, lng: -56.6765 },
+  "Mar de Ajó": { lat: -36.7260, lng: -56.6765 },
   "Pinamar (El Muelle)": { lat: -37.1160, lng: -56.8565 },
+  "UFO Point": { lat: -37.1060, lng: -56.8465 },
+  "Cariló": { lat: -37.1660, lng: -56.8965 },
   "Villa Gesell": { lat: -37.2560, lng: -56.9665 },
-  "Mar Chiquita": { lat: -37.7560, lng: -57.4265 }
+  "Mar de las Pampas": { lat: -37.3260, lng: -57.0265 },
+  "Mar Chiquita": { lat: -37.7560, lng: -57.4265 },
+
+  // Patagonia
+  "Las Grutas": { lat: -40.8160, lng: -65.0965 },
+  "Playa Unión": { lat: -43.3260, lng: -65.0365 },
+  "Rio Grande": { lat: -53.7860, lng: -67.7000 }
 };
 
 const sanitizeResult = (data: any) => {
@@ -71,19 +113,41 @@ const sanitizeResult = (data: any) => {
             // Normalización agresiva para matching inequívoco
             const normalize = (s: string) => s.toLowerCase().trim()
               .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quita acentos
+              .replace(/^(playa|balneario|parador|point|spot)\s+/i, "") // Quita prefijos comunes
               .replace(/[^a-z0-9]/g, ""); // Quita todo lo que no sea letra o número
             
             const normalizedSpotName = normalize(spot.name);
             
             let matchedName = null;
-            for (const dbName of Object.keys(SPOT_COORDINATES)) {
-              const dbNormalized = normalize(dbName);
-              
-              if (normalizedSpotName === dbNormalized || 
-                  normalizedSpotName.includes(dbNormalized) || 
-                  dbNormalized.includes(normalizedSpotName)) {
-                matchedName = dbName;
-                break;
+            
+            // Alias manuales para spots renombrados o conocidos por varios nombres
+            const aliases: Record<string, string> = {
+              "lapaloma": "Acantilados",
+              "paloma": "Acantilados",
+              "biologia": "Playa Grande (Biología)",
+              "yacht": "Playa Grande (El Yacht)",
+              "elyacht": "Playa Grande (El Yacht)",
+              "popular": "Playa Popular",
+              "varese": "Varese",
+              "waikiki": "Waikiki",
+              "serena": "Serena Sur",
+              "lunaroja": "Luna Roja",
+              "cruzdelsur": "Cruz del Sur",
+              "rct": "RCT"
+            };
+
+            if (aliases[normalizedSpotName]) {
+              matchedName = aliases[normalizedSpotName];
+            } else {
+              for (const dbName of Object.keys(SPOT_COORDINATES)) {
+                const dbNormalized = normalize(dbName);
+                
+                if (normalizedSpotName === dbNormalized || 
+                    normalizedSpotName.includes(dbNormalized) || 
+                    dbNormalized.includes(normalizedSpotName)) {
+                  matchedName = dbName;
+                  break;
+                }
               }
             }
             
@@ -143,41 +207,61 @@ Reglas de Análisis (El Protocolo Surfpoint):
   - DEBES comparar 2 fuentes. Si hay discrepancia, prioriza Windguru.
 - Brevedad (EXTREMA): Máximo 10 palabras por spot. Sin relleno.
 - Coordenadas (REGLA DE ORO): LOS PINES DEBEN ESTAR EN LA ARENA.
+  SOLO RECOMIENDA SPOTS QUE ESTÉN EN LA LISTA OBLIGATORIA. SI UN SPOT NO ESTÁ EN LA LISTA, NO LO INCLUYAS.
   USA ESTA LISTA OBLIGATORIA:
   - Mar del Plata:
+    - Sun Rider: -37.9560, -57.5465
+    - Estrada: -37.9660, -57.5435
+    - Cardiel: -37.9790, -57.5405
+    - Alfonsina: -37.9910, -57.5465
+    - Saint Michel: -37.9930, -57.5455
+    - Playa Popular: -38.0030, -57.5415
+    - Punta Iglesia: -38.0010, -57.5425
+    - Cabo Corrientes: -38.0160, -57.5290
+    - Varese: -38.0130, -57.5315
     - Playa Grande (Biología): -38.0260, -57.5305
     - Playa Grande (El Yacht): -38.0310, -57.5320
-    - Varese: -38.0130, -57.5315
-    - Waikiki: -38.0700, -57.5440
-    - Serena Sur: -38.0860, -57.5525
-    - Acantilados (La Paloma): -38.0955, -57.5535
-    - Cardiel: -37.9790, -57.5405
-    - Estrada: -37.9660, -57.5435
-    - Sun Rider: -37.9560, -57.5465
-    - Mariano: -38.0715, -57.5465
-    - Honu Beach: -38.0780, -57.5495
-    - El Faro: -38.0830, -57.5515
-  - Chapadmalal:
-    - Luna Roja: -38.1595, -57.6390
+    - Punta Mogotes (Balneario 12): -38.0600, -57.5430
+    - Waikiki: -38.0831, -57.5442
+    - Mariano: -38.0850, -57.5460
+    - Honu Beach: -38.0880, -57.5480
+    - El Faro: -38.0910, -57.5500
+    - La Serena: -38.0950, -57.5520
+    - Acantilados: -38.1050, -57.5550
+    - Luna Roja: -38.1601, -57.6391
     - Cruz del Sur: -38.1665, -57.6470
     - RCT: -38.1765, -57.6570
   - Miramar:
-    - Punta Viracho: -38.2865, -57.8170
-    - El Muelle: -38.2765, -57.8270
-    - Pompeya: -38.2665, -57.8330
-  - Necochea:
-    - Escollera Necochea (Arena): -38.5880, -58.7070
-    - El Caño: -38.5938, -58.7150
-    - Karamawi: -38.6018, -58.7250
-  - Quequén:
-    - La Hélice: -38.5778, -58.6850
-    - Monte Pasubio: -38.5718, -58.6750
+    - Miramar (El Muelle): -38.2760, -57.8265
+    - Miramar (Punta Viracho): -38.2860, -57.8165
+    - Miramar (Pompeya): -38.2660, -57.8325
+  - Necochea & Quequén:
+    - Quequén (Monte Pasubio): -38.5715, -58.6745
+    - Quequén (La Hélice): -38.5775, -58.6845
+    - Necochea (Escollera): -38.5875, -58.7065
+    - Necochea (El Caño): -38.5935, -58.7145
+    - Necochea (Karamawi): -38.6015, -58.7245
+  - Costa Atlántica Norte:
+    - San Clemente (El Muelle): -36.3560, -56.6865
+    - Santa Teresita: -36.5410, -56.6865
+    - San Bernardo: -36.6860, -56.6765
+    - Mar de Ajó: -36.7260, -56.6765
+    - Pinamar (El Muelle): -37.1160, -56.8565
+    - UFO Point: -37.1060, -56.8465
+    - Cariló: -37.1660, -56.8965
+    - Villa Gesell: -37.2560, -56.9665
+    - Mar de las Pampas: -37.3260, -57.0265
+    - Mar Chiquita: -37.7560, -57.4265
+  - Patagonia:
+    - Las Grutas: -40.8160, -65.0965
+    - Playa Unión: -43.3260, -65.0365
+    - Rio Grande: -53.7860, -67.7000
 - Criterio de Puntuación: Sé MUY exigente (1-10).
 - Diversidad: No te quedes solo en Playa Grande. Recomienda Serena Sur con viento N/NW, Varese con viento S fuerte, etc.
 - Horario Lógico (CRÍTICO): El análisis DEBE dividirse exactamente en 2 franjas horarias:
   1. Mañana (Ref: 08:00)
   2. Tarde (Ref: 17:00)
-- Filtro de Tiempo (CRÍTICO): Si la consulta se realiza tarde en el día (después de las 14:00), omite la franja de la Mañana para el día de hoy.
+- Filtro de Tiempo (ESTRICTO): Si la consulta se realiza después del mediodía (12:00), NO ENTREGUES información de la "Mañana". Solo entrega la "Tarde". Esto aplica tanto para el "forecast" como para los "bestSpots".
 - Clima (Simplificado): Usa EXCLUSIVAMENTE "Soleado", "Nublado", "Lluvia" o "Tormenta". No uses "Parcialmente nublado" ni términos largos.
 - "forecast": Array de 2 objetos. Cada uno DEBE incluir:
   - "time": "Mañana (08:00)" o "Tarde (17:00)"
@@ -185,8 +269,15 @@ Reglas de Análisis (El Protocolo Surfpoint):
   - "airTemp": número
   - "waterTemp": número
   - "wetsuit": string
-  - ... (viento, olas, etc.)
-- "bestSpots": Array de 2 objetos: "Mañana" y "Tarde".
+  - "windSpeed": número (en nudos)
+  - "windDirection": string (ej: "S", "NW")
+  - "waveHeight": número (en metros)
+  - "waveDirection": string (ej: "SE", "E")
+  - "wavePeriod": número (en segundos)
+  - "cloudCover": número (0-100)
+- "bestSpots": Array de 2 objetos: "Mañana" y "Tarde". Cada uno tiene:
+  - "timeWindow": "Mañana" o "Tarde"
+  - "spots": Array de objetos con "name", "description", "score" (1-10), "lat", "lng".
 - Veredicto: Corto y al pie. Nombra el spot ganador en negrita.
 - Tono: Técnico y directo.
 
@@ -198,10 +289,10 @@ El output para el usuario debe ser un objeto JSON que contenga:
    - "dayName": Nombre del día (ej: "Jueves 5")
    - "waterTemp": Temperatura del agua estimada (ej: 19)
    - "wetsuit": Recomendación de traje (ej: "3/2mm")
-   - "weather": Estado del clima (ej: "Soleado", "Parcialmente Nublado", "Nublado", "Lluvia")
+   - "weather": Estado del clima (ej: "Soleado", "Nublado", "Lluvia", "Tormenta")
    - "airTemp": Temperatura del aire estimada (ej: 22)
-   - "forecast": Array con el pronóstico por horas de ESE día. DEBE tener exactamente 4 objetos correspondientes a: "07:00", "11:00", "15:00" y "19:00".
-   - "bestSpots": Array de spots recomendados para ESE día, agrupados por franja horaria. DEBE tener exactamente 4 objetos correspondientes a: "Mañana Temprano", "Mañana Tarde", "Tarde Temprano" y "Tarde Noche".
+   - "forecast": Array con el pronóstico de ESE día (Mañana y Tarde).
+   - "bestSpots": Array de spots recomendados para ESE día (Mañana y Tarde).
    - "verdict": Veredicto experto y decidido.`;
 
 const TimePicker = ({ value, onChange, minTime, className = "" }: { value: string, onChange: (val: string) => void, minTime?: string, className?: string }) => {
@@ -247,53 +338,76 @@ const TimePicker = ({ value, onChange, minTime, className = "" }: { value: strin
   );
 };
 
-const CostEstimator = ({ stats, hasCustomKey }: { stats: { prompt: number, candidates: number, total: number } | null, hasCustomKey: boolean }) => {
+const DetailedUsageStats = ({ stats }: { stats: { prompt: number, candidates: number, total: number } | null }) => {
   if (!stats) return null;
-
-  // Pricing (approximate for Gemini 1.5 Flash)
-  // Input: $0.075 / 1M tokens
-  // Output: $0.30 / 1M tokens
-  // Search Grounding: $0.035 per request
-  const inputCost = (stats.prompt / 1000000) * 0.075;
-  const outputCost = (stats.candidates / 1000000) * 0.30;
-  const searchCost = 0.035; // Fixed cost per grounding request
-  const totalCost = inputCost + outputCost + searchCost;
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="mt-4 p-3 bg-slate-950/50 border border-slate-800 rounded-xl flex flex-col gap-2"
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="max-w-4xl mx-auto px-4 mt-16 mb-8"
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <BarChart2 size={14} className="text-cyan-500" />
-          <span>Monitor de Consumo (Estimado)</span>
-        </div>
-        <div className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">
-          {hasCustomKey ? 'PAGO POR USO' : 'NIVEL GRATUITO'}
+      <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-12 shadow-2xl border border-slate-800 relative overflow-hidden group">
+        {/* Background decorative elements */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-orange-600/10 blur-[120px] rounded-full -mr-48 -mt-48 animate-pulse" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-cyan-600/10 blur-[120px] rounded-full -ml-48 -mb-48 animate-pulse" style={{ animationDelay: '1s' }} />
+        
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
+          <div className="space-y-4 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+              <div className="p-2 bg-orange-500/10 rounded-xl border border-orange-500/20">
+                <Cpu size={24} className="text-orange-500" />
+              </div>
+              <span className="text-xs font-black uppercase tracking-[0.4em] text-orange-500">Métricas de Procesamiento</span>
+            </div>
+            <h3 className="text-3xl font-display font-extrabold italic tracking-tight text-white leading-tight">Consumo de la consulta</h3>
+            <p className="text-slate-400 text-base font-medium max-w-sm leading-relaxed">
+              Análisis realizado por Gemini 3.1 Pro. Estos son los recursos utilizados para generar tu reporte personalizado en tiempo real.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full md:w-auto">
+            <div className="bg-slate-800/40 backdrop-blur-md p-6 rounded-3xl border border-slate-700/50 flex flex-col items-center justify-center text-center hover:border-orange-500/30 transition-all hover:bg-slate-800/60 group/card">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 group-hover/card:text-slate-400 transition-colors">Entrada</span>
+              <span className="text-2xl font-mono font-bold text-white tracking-tighter">{stats.prompt.toLocaleString()}</span>
+              <span className="text-[10px] font-bold text-slate-600 mt-1 uppercase tracking-widest">tokens</span>
+            </div>
+            <div className="bg-slate-800/40 backdrop-blur-md p-6 rounded-3xl border border-slate-700/50 flex flex-col items-center justify-center text-center hover:border-orange-500/30 transition-all hover:bg-slate-800/60 group/card">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 group-hover/card:text-slate-400 transition-colors">Salida</span>
+              <span className="text-2xl font-mono font-bold text-white tracking-tighter">{stats.candidates.toLocaleString()}</span>
+              <span className="text-[10px] font-bold text-slate-600 mt-1 uppercase tracking-widest">tokens</span>
+            </div>
+            <div className="bg-orange-600 p-6 rounded-3xl shadow-xl shadow-orange-900/20 flex flex-col items-center justify-center text-center transform hover:scale-[1.05] transition-all hover:shadow-orange-600/20">
+              <span className="text-[10px] font-black uppercase tracking-widest text-orange-200 mb-2">Total</span>
+              <span className="text-2xl font-mono font-bold text-white tracking-tighter">{stats.total.toLocaleString()}</span>
+              <span className="text-[10px] font-bold text-orange-200 mt-1 uppercase tracking-widest">tokens</span>
+            </div>
+          </div>
         </div>
       </div>
-      
-      <div className="grid grid-cols-3 gap-2">
-        <div className="bg-slate-900/50 p-2 rounded-lg border border-slate-800/50">
-          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Tokens</p>
-          <p className="text-sm font-mono text-slate-200">{stats.total.toLocaleString()}</p>
-        </div>
-        <div className="bg-slate-900/50 p-2 rounded-lg border border-slate-800/50">
-          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Búsqueda</p>
-          <p className="text-sm font-mono text-slate-200">$0.035</p>
-        </div>
-        <div className="bg-slate-900/50 p-2 rounded-lg border border-slate-800/50">
-          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Costo Total</p>
-          <p className="text-sm font-mono text-emerald-400 font-bold">${totalCost.toFixed(4)}</p>
-        </div>
-      </div>
-      
-      <p className="text-[9px] text-slate-600 italic">
-        * Los costos son aproximados en USD. La mayoría de las veces, si estás en el "Free Tier", Google no te cobrará nada hasta superar un volumen muy alto.
-      </p>
     </motion.div>
+  );
+};
+
+const CostEstimator = ({ stats, hasCustomKey }: { stats: { prompt: number, candidates: number, total: number } | null, hasCustomKey: boolean }) => {
+  if (!stats) return null;
+
+  return (
+    <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-100 rounded-full border border-slate-200 shadow-sm">
+      <div className="flex items-center gap-1.5">
+        <BarChart2 size={12} className="text-orange-600" />
+        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider hidden md:inline">Consumo:</span>
+        <span className="text-[11px] font-mono font-bold text-slate-900">{stats.total.toLocaleString()} tokens</span>
+      </div>
+      <div className="h-3 w-[1px] bg-slate-300" />
+      <div className="flex items-center gap-1">
+        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider hidden md:inline">Modo:</span>
+        <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${hasCustomKey ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+          {hasCustomKey ? 'PRO' : 'FREE'}
+        </span>
+      </div>
+    </div>
   );
 };
 
@@ -448,6 +562,80 @@ const getCloudColor = (cover: number) => {
   return { bg: 'bg-slate-800', text: 'text-white' }; // Nublado
 };
 
+const BentoView = ({ verdict, mainStats }: { verdict: string, mainStats: any }) => {
+  if (!mainStats) return null;
+
+  return (
+    <div className="space-y-6">
+      {/* Main Verdict */}
+      <div className="bg-white rounded-[2rem] shadow-lg border border-slate-100 relative overflow-hidden group transition-all">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-orange-50 rounded-full -mr-32 -mt-32 opacity-40 blur-3xl" />
+        <div className="p-8 space-y-6 relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-orange-600 rounded-xl flex items-center justify-center text-white shadow-md">
+              <Target size={24} />
+            </div>
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-600 block mb-0.5">EL VEREDICTO</span>
+              <h2 className="text-2xl font-display font-extrabold italic tracking-tight text-slate-900 leading-none">La posta</h2>
+            </div>
+          </div>
+          <div className="text-lg md:text-xl text-slate-800 font-medium leading-relaxed markdown-body">
+            <ReactMarkdown>{verdict}</ReactMarkdown>
+          </div>
+        </div>
+      </div>
+
+      {/* Key Stats - Horizontal Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Waves Card */}
+        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-md flex flex-col items-center text-center group hover:border-cyan-200 transition-all">
+          <div className="w-12 h-12 bg-cyan-50 rounded-xl flex items-center justify-center text-cyan-600 mb-3 group-hover:scale-110 transition-transform">
+            <Waves size={24} />
+          </div>
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">OLAS</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-3xl font-display font-black text-slate-900">{mainStats.waveHeight}</span>
+            <span className="text-sm font-bold text-slate-400">m</span>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5 px-3 py-1 bg-slate-50 rounded-full text-xs font-black text-slate-600 border border-slate-100">
+            <Navigation size={12} className="text-cyan-500" style={{ transform: `rotate(${getDirectionRotation(mainStats.waveDirection)}deg)` }} />
+            {mainStats.waveDirection}
+          </div>
+        </div>
+
+        {/* Wind Card */}
+        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-md flex flex-col items-center text-center group hover:border-orange-200 transition-all">
+          <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600 mb-3 group-hover:scale-110 transition-transform">
+            <Wind size={24} />
+          </div>
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">VIENTO</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-3xl font-display font-black text-slate-900">{mainStats.windSpeed}</span>
+            <span className="text-sm font-bold text-slate-400">km/h</span>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5 px-3 py-1 bg-slate-50 rounded-full text-xs font-black text-slate-600 border border-slate-100">
+            <Navigation size={12} className="text-orange-500" style={{ transform: `rotate(${getDirectionRotation(mainStats.windDirection)}deg)` }} />
+            {mainStats.windDirection}
+          </div>
+        </div>
+
+        {/* Period Card */}
+        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-md flex flex-col items-center text-center group hover:border-blue-200 transition-all">
+          <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-3 group-hover:scale-110 transition-transform">
+            <Activity size={24} />
+          </div>
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">PERÍODO</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-3xl font-display font-black text-slate-900">{mainStats.wavePeriod}</span>
+            <span className="text-sm font-bold text-slate-400">s</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const InfoAgua = ({ forecast }: { forecast: any[] }) => {
   const getWeatherIcon = (condition: string = "") => {
     const c = condition.toLowerCase();
@@ -458,33 +646,48 @@ const InfoAgua = ({ forecast }: { forecast: any[] }) => {
   };
 
   return (
-    <div className="bg-slate-50/60 border-t border-slate-100/50 py-4 px-6 space-y-4">
-      {forecast.map((p, idx) => (
-        <div key={idx} className="grid grid-cols-2 md:grid-cols-4 items-center gap-4">
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest w-16">{idx === 0 ? 'MAÑANA' : 'TARDE'}</span>
-            <div className="flex items-center gap-2 text-slate-900 font-bold">
-              {getWeatherIcon(p.weather)}
-              <span className="text-sm whitespace-nowrap">{p.weather || 'Soleado'}</span>
+    <div className="bg-slate-50/30 border-t border-slate-100 p-6">
+      <div className={`grid gap-4 ${forecast.length > 1 ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
+        {forecast.map((p, idx) => (
+          <div key={idx} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-slate-50 pb-3">
+              <span className="text-[12px] font-black text-slate-400 uppercase tracking-widest">
+                {idx === 0 && forecast.length > 1 ? 'MAÑANA' : (p.time?.includes('Tarde') ? 'TARDE' : 'MAÑANA')}
+              </span>
+              <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl">
+                {getWeatherIcon(p.weather)}
+                <span className="text-xs font-black text-slate-900 uppercase tracking-tight">{p.weather || 'Soleado'}</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-3">
+              <div className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-orange-50/50">
+                <Thermometer size={16} className="text-orange-500" />
+                <div className="flex flex-col items-center">
+                  <span className="text-[8px] font-black text-orange-400 uppercase tracking-widest leading-none mb-0.5">AIRE</span>
+                  <span className="text-base font-black text-orange-600">{p.airTemp || 22}°C</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-blue-50/50">
+                <Droplet size={16} className="text-blue-500" />
+                <div className="flex flex-col items-center">
+                  <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest leading-none mb-0.5">AGUA</span>
+                  <span className="text-base font-black text-blue-700">{p.waterTemp}°C</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-slate-50">
+                <Shirt size={16} className="text-slate-500" />
+                <div className="flex flex-col items-center">
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">TRAJE</span>
+                  <span className="text-[11px] font-black text-slate-700 text-center leading-tight">{p.wetsuit}</span>
+                </div>
+              </div>
             </div>
           </div>
-          
-          <div className="flex items-center gap-2 text-orange-600 font-bold">
-            <Thermometer size={18} className="text-orange-500" />
-            <span className="text-sm">{p.airTemp || 22}°C</span>
-          </div>
-
-          <div className="flex items-center gap-2 text-blue-700 font-bold">
-            <Droplet size={18} className="text-blue-500" />
-            <span className="text-sm">{p.waterTemp}°C</span>
-          </div>
-
-          <div className="flex items-center gap-2 text-orange-700 font-bold">
-            <Shirt size={18} className="text-orange-500" />
-            <span className="text-sm whitespace-nowrap">{p.wetsuit}</span>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 };
@@ -502,30 +705,42 @@ const EstadoDeLasCosas = ({ forecast, astronomy }: { forecast: any[], astronomy:
   };
 
   return (
-    <div className="bg-white rounded-[1.5rem] overflow-hidden border border-slate-100 shadow-xl">
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-6 border-b border-slate-100 flex items-center justify-between hover:bg-slate-50 transition-colors"
-      >
-        <div className="flex items-center gap-3">
+    <div className="bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-lg">
+      <div className="w-full p-6 md:p-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <button 
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+        >
           <Activity className="text-orange-600" size={24} />
           <h3 className="text-xl font-display font-extrabold italic tracking-tight text-slate-900">Pronóstico detallado</h3>
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="hidden md:flex items-center gap-4 text-sm font-bold text-slate-500">
-            <span className="text-sm uppercase tracking-widest text-slate-400">Sol:</span>
-            <div className="flex items-center gap-1">
-              <Sun size={16} className="text-yellow-500" />
-              <span>{astronomy.sunrise}</span>
+          {isOpen ? <ChevronUp className="text-slate-400" size={20} /> : <ChevronDown className="text-slate-400" size={20} />}
+        </button>
+        
+        {astronomy && (
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <div className="text-yellow-500">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+                  <path d="m8 12.2 3-3 3 3" />
+                  <path d="M12 9.2V22" />
+                </svg>
+              </div>
+              <span className="text-lg font-black text-slate-800">{astronomy.sunrise}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Moon size={16} className="text-indigo-400" />
-              <span>{astronomy.sunset}</span>
+            <div className="flex items-center gap-2">
+              <div className="text-blue-500">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+                  <path d="m8 15.8 3 3 3-3" />
+                  <path d="M12 18.8V2" />
+                </svg>
+              </div>
+              <span className="text-lg font-black text-slate-800">{astronomy.sunset}</span>
             </div>
           </div>
-          {isOpen ? <ChevronUp className="text-slate-400" /> : <ChevronDown className="text-slate-400" />}
-        </div>
-      </button>
+        )}
+      </div>
       
       <AnimatePresence>
         {isOpen && (
@@ -587,42 +802,6 @@ const EstadoDeLasCosas = ({ forecast, astronomy }: { forecast: any[], astronomy:
                   </tr>
                   <tr>
                     <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
-                      <Cloud size={16} className="text-orange-600" /> Clima
-                    </td>
-                    {periods.map((p, i) => (
-                      <td key={i} className="px-6 py-2 text-center">
-                        <div className="inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base bg-slate-50 text-slate-700">
-                          {p.weather || 'Soleado'}
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
-                      <Thermometer size={16} className="text-orange-600" /> Aire
-                    </td>
-                    {periods.map((p, i) => (
-                      <td key={i} className="px-6 py-2 text-center">
-                        <div className="inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base bg-orange-50 text-orange-700">
-                          {p.airTemp}°C
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
-                      <Droplet size={16} className="text-orange-600" /> Agua
-                    </td>
-                    {periods.map((p, i) => (
-                      <td key={i} className="px-6 py-2 text-center">
-                        <div className="inline-flex items-center justify-center gap-2 w-32 py-1.5 rounded-xl font-black text-base bg-blue-50 text-blue-700">
-                          {p.waterTemp}°C
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-2 text-sm font-extrabold text-slate-500 uppercase flex items-center gap-2">
                       <Cloud size={16} className="text-orange-600" /> Nubes
                     </td>
                     {periods.map((p, i) => {
@@ -646,15 +825,31 @@ const EstadoDeLasCosas = ({ forecast, astronomy }: { forecast: any[], astronomy:
   );
 };
 
+// Helper to change map view
+function ChangeView({ center, zoom }: { center: [number, number], zoom: number }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, zoom);
+  }, [center, zoom]);
+  return null;
+}
+
 const MapView = ({ spots, activeSpot, onSpotClick }: { spots: any[], activeSpot: any, onSpotClick: (spot: any) => void }) => {
-  const center: [number, number] = activeSpot ? [activeSpot.lat, activeSpot.lng] : (spots.length > 0 ? [spots[0].lat, spots[0].lng] : [-38.0055, -57.5426]);
+  const center: [number, number] = activeSpot ? [activeSpot.lat, activeSpot.lng] : (spots.length > 0 ? [spots[0].lat, spots[0].lng] : [-38.0055, -57.5400]);
+  const zoom = activeSpot ? 16 : 13;
   
   return (
-    <div className="h-[300px] lg:h-[400px] w-full rounded-[1.5rem] overflow-hidden border-4 border-white shadow-xl relative z-0">
-      <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
+    <div className="h-[400px] lg:h-[600px] w-full rounded-[2rem] overflow-hidden border-4 border-white shadow-2xl relative z-0">
+      <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }}>
+        <ChangeView center={center} zoom={zoom} />
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          attribution='&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EBP, and the GIS User Community'
+        />
+        <TileLayer
+          url="https://stamen-tiles-{s}.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          opacity={0.7}
         />
         {spots.map((spot, idx) => (
           <Marker 
@@ -665,17 +860,23 @@ const MapView = ({ spots, activeSpot, onSpotClick }: { spots: any[], activeSpot:
             }}
           >
             <Popup>
-              <div className="p-2">
-                <h4 className="font-bold text-slate-900">{spot.name}</h4>
-                <p className="text-xs text-slate-600 mb-2">{spot.description}</p>
-                <a 
-                  href={`https://www.google.com/maps/search/?api=1&query=${spot.lat},${spot.lng}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] font-black uppercase text-orange-600 hover:underline flex items-center gap-1"
-                >
-                  <Navigation size={10} /> Cómo llegar
-                </a>
+              <div className="p-2 min-w-[150px]">
+                <h4 className="font-black text-slate-900 text-sm uppercase mb-1">{spot.name}</h4>
+                <p className="text-xs text-slate-600 mb-3 leading-tight">{spot.description}</p>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Star size={12} className="text-orange-500 fill-orange-500" />
+                    <span className="text-xs font-black text-slate-900">{spot.score}/10</span>
+                  </div>
+                  <a 
+                    href={`https://www.google.com/maps/search/?api=1&query=${spot.lat},${spot.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-black uppercase bg-orange-600 text-white px-3 py-1.5 rounded-lg text-center hover:bg-orange-700 transition-colors flex items-center justify-center gap-1"
+                  >
+                    <Navigation size={10} /> Cómo llegar
+                  </a>
+                </div>
               </div>
             </Popup>
           </Marker>
@@ -1231,7 +1432,34 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
   };
 
   return (
-    <div className="min-h-screen font-sans selection:bg-orange-200">
+    <div className="min-h-screen font-sans selection:bg-orange-200 flex flex-col">
+      {/* Global Top Banner & Header */}
+      <div className="sticky top-0 z-[100] bg-white border-b border-slate-100 shadow-sm">
+        <div className="max-w-4xl mx-auto">
+          <AdSlot className="h-20 md:h-24 bg-slate-50 border-x border-slate-100" />
+        </div>
+        
+        {view === 'results' && (
+          <header className="px-6 py-4 flex items-center justify-between border-t border-slate-50 relative">
+            <button 
+              onClick={() => setView('form')}
+              className="flex items-center gap-2 text-sm font-extrabold text-slate-500 hover:text-orange-600 transition-colors uppercase tracking-tight z-10"
+            >
+              <ArrowDown className="rotate-90" size={16} />
+              <span className="hidden sm:inline">Nueva Consulta</span>
+            </button>
+
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 cursor-pointer" onClick={() => setView('form')}>
+              <span className="text-xl md:text-2xl font-display font-extrabold tracking-tighter text-slate-900 uppercase italic">SURF<span className="text-orange-600">POINT</span></span>
+            </div>
+            
+            <div className="z-10">
+              <CostEstimator stats={usageStats} hasCustomKey={hasCustomKey} />
+            </div>
+          </header>
+        )}
+      </div>
+
       <AnimatePresence mode="wait">
         {view === 'form' ? (
           <motion.div
@@ -1252,32 +1480,19 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
               <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-slate-100" />
             </div>
 
-            {/* Header */}
-            <header className="relative z-10 p-6 flex justify-end items-center">
-              <button 
-                onClick={() => window.aistudio?.openSelectKey?.()}
-                className="p-2 hover:bg-white/50 rounded-full transition-colors"
-                title="Configurar API Key"
-              >
-                <AlertCircle size={20} className={hasCustomKey ? "text-green-600" : "text-slate-400"} />
-              </button>
-            </header>
-
             {/* Main Form Hero */}
-            <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-12">
-                  <div className="w-full max-w-4xl text-center mb-8">
-                    <div className="mb-8 space-y-4">
-                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] text-center">Espacio Publicitario</p>
-                      <AdSlot className="h-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl" />
-                    </div>
+            <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 pt-[56px] pb-12">
+                  <div className="w-full max-w-4xl text-center mb-[56px]">
                     <h1 
-                      className="text-4xl sm:text-5xl md:text-7xl font-display font-extrabold text-slate-900 mb-6 leading-[0.9] tracking-tight uppercase italic whitespace-nowrap inline-block"
+                      className="text-[80px] leading-[80px] font-display font-bold text-slate-900 mb-4 tracking-tighter uppercase italic whitespace-nowrap inline-block drop-shadow-sm"
                     >
                       SURF<span className="text-orange-600">POINT</span>
                     </h1>
-                    <p className="text-xl text-slate-900 font-extrabold mx-auto max-w-2xl drop-shadow-[0_0_8px_rgba(255,255,255,1)]">
-                      Tu radar experto para deportes de tabla en la costa argentina.
-                    </p>
+                    <div className="space-y-2">
+                      <p className="text-[22px] leading-[24px] text-black font-bold max-w-2xl mx-auto">
+                        Encontrá olas y vientos épicos en tiempo real.
+                      </p>
+                    </div>
                   </div>
 
               <div className="w-full max-w-3xl flex flex-col items-center">
@@ -1450,50 +1665,30 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
             animate={{ opacity: 1, y: 0 }}
             className="min-h-screen bg-slate-50 pb-20"
           >
-            {/* Results Header */}
-            <header className="bg-white border-b border-slate-200 sticky top-0 z-50 px-6 py-4 flex items-center justify-between relative">
-              <button 
-                onClick={() => setView('form')}
-                className="flex items-center gap-2 text-sm font-extrabold text-slate-500 hover:text-orange-600 transition-colors uppercase tracking-tight"
-              >
-                <ArrowDown className="rotate-90" size={16} />
-                Nueva Consulta
-              </button>
-
-              <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 cursor-pointer" onClick={() => setView('form')}>
-                <span className="text-xl md:text-2xl font-display font-extrabold tracking-tighter text-slate-900 uppercase italic">SURF<span className="text-orange-600">POINT</span></span>
-              </div>
-              
-              <div className="w-24" /> {/* Spacer to balance the layout */}
-            </header>
-
-            <div className="max-w-4xl mx-auto px-4 py-8 space-y-12" ref={resultsRef}>
-              <div className="space-y-4">
-                <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] text-center">Espacio Publicitario</p>
-                <AdSlot className="h-24 md:h-32 bg-white border-2 border-dashed border-slate-100 rounded-3xl mb-8" />
-              </div>
-              
-              {/* Greeting */}
+            {/* Results Content */}
+            <div className="max-w-4xl mx-auto px-4 py-12 space-y-16" ref={resultsRef}>
+              {/* Hero Greeting */}
               {result?.greeting && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-center px-4"
+                  className="text-center px-4 py-6"
                 >
-                  <h2 className="text-xl md:text-3xl font-display font-extrabold italic tracking-tight text-slate-900 leading-tight">
+                  <span className="text-xs font-black uppercase tracking-[0.3em] text-orange-600 mb-4 block">EL REPORTE</span>
+                  <h2 className="text-[28px] md:text-[42px] font-display font-extrabold italic tracking-tight text-slate-900 leading-[1.1]">
                     {result.greeting}
                   </h2>
                 </motion.div>
               )}
 
-              {/* Day Selection Tabs */}
+              {/* Day Selection Tabs - More prominent */}
               {result?.dailyResults && result.dailyResults.length > 1 && (
-                <div className="flex justify-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+                <div className="flex justify-center p-1 bg-slate-200/50 rounded-[2rem] max-w-fit mx-auto backdrop-blur-sm">
                   {result.dailyResults.map((day: any, idx: number) => (
                     <button
                       key={idx}
                       onClick={() => setSelectedDayIndex(idx)}
-                      className={`px-6 py-3 rounded-2xl text-sm font-extrabold transition-all whitespace-nowrap ${selectedDayIndex === idx ? 'bg-orange-600 text-white shadow-lg shadow-orange-200' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
+                      className={`px-8 py-4 rounded-[1.75rem] text-sm font-black transition-all whitespace-nowrap uppercase tracking-widest ${selectedDayIndex === idx ? 'bg-white text-orange-600 shadow-xl' : 'text-slate-500 hover:text-slate-700'}`}
                     >
                       {day.dayName}
                     </button>
@@ -1511,73 +1706,87 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
                     exit={{ opacity: 0, x: -20 }}
                     className="space-y-8"
                   >
-                    {/* Verdict Card */}
-                    <div className="bg-white rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-2 border-slate-100 relative overflow-hidden">
-                      <div className="p-8 md:p-10 space-y-8">
-                        <div className="flex items-center gap-3 text-orange-600">
-                          <Target size={28} />
-                          <h2 className="text-2xl md:text-3xl font-display font-extrabold italic tracking-tight">La posta</h2>
-                        </div>
-                        <div className="text-base md:text-lg text-slate-800 font-medium leading-relaxed markdown-body">
-                          <ReactMarkdown>{result.dailyResults[selectedDayIndex].verdict}</ReactMarkdown>
+                    {/* Bento Grid: Verdict + Key Stats */}
+                    <BentoView 
+                      verdict={result.dailyResults[selectedDayIndex].verdict}
+                      mainStats={result.dailyResults[selectedDayIndex].forecast[0]} // Use first period as representative
+                    />
+
+                    {/* Info Agua (Integrated - Bleeding to edges) */}
+                    <div className="bg-white rounded-[2.5rem] shadow-xl border-2 border-slate-100 overflow-hidden">
+                      <div className="p-8 md:p-10 border-b border-slate-100">
+                        <div className="flex items-center gap-3 text-slate-900">
+                          <Activity size={24} className="text-orange-600" />
+                          <h2 className="text-2xl font-display font-extrabold italic tracking-tight">Condiciones del agua</h2>
                         </div>
                       </div>
-
-                      {/* Info Agua (Integrated - Bleeding to edges) */}
                       <InfoAgua 
-                        forecast={result.dailyResults[selectedDayIndex].forecast}
+                        forecast={result.dailyResults[selectedDayIndex].forecast.filter((p: any) => {
+                          const now = new Date();
+                          const isToday = result.dailyResults[selectedDayIndex].date === now.toISOString().split('T')[0];
+                          if (!isToday) return true;
+                          // Check if time contains 'Mañana'
+                          if (now.getHours() >= 12 && (p.time || '').includes('Mañana')) return false;
+                          return true;
+                        })}
                       />
                     </div>
 
-                    {/* Pronóstico detallado (Estado de las cosas) */}
-                    <EstadoDeLasCosas 
-                      forecast={result.dailyResults[selectedDayIndex].forecast} 
-                      astronomy={result.astronomy}
-                    />
-
-                    {/* Spots Grid (Moved up) */}
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-3 text-slate-900">
-                        <MapPin size={20} className="text-orange-600" />
+                    {/* Spots Grid */}
+                    <div className="bg-white rounded-[2rem] p-6 shadow-lg border border-slate-100 space-y-8">
+                      <div className="flex items-center gap-3 text-slate-900 border-b border-slate-50 pb-4">
+                        <MapPin size={24} className="text-orange-600" />
                         <h2 className="text-xl font-display font-extrabold italic tracking-tight">Los points del día</h2>
                       </div>
                       
-                      <div className="grid grid-cols-1 gap-6">
-                        {result.dailyResults[selectedDayIndex].bestSpots.map((window: any, wIdx: number) => (
-                          <div key={wIdx} className="bg-white rounded-[1.5rem] p-6 shadow-lg border border-slate-100 space-y-6">
-                            <div className="flex items-center gap-3 text-slate-400">
-                              <Calendar size={18} />
-                              <span className="text-sm font-extrabold uppercase tracking-widest">{window.timeWindow}</span>
+                      <div className="space-y-8">
+                        {result.dailyResults[selectedDayIndex].bestSpots
+                          .filter((period: any) => {
+                            const now = new Date();
+                            const isToday = result.dailyResults[selectedDayIndex].date === now.toISOString().split('T')[0];
+                            if (!isToday) return true;
+                            if (now.getHours() >= 12 && period.timeWindow === 'Mañana') return false;
+                            return true;
+                          })
+                          .map((period: any, wIdx: number) => (
+                          <div key={wIdx} className="space-y-4">
+                            <div className="flex flex-col gap-0.5 text-slate-400 border-b border-slate-50 pb-2">
+                              <span className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                                {period.timeWindow}
+                              </span>
+                              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                {period.timeWindow === 'Mañana' ? '07:00 - 13:00' : '14:00 - 20:00'}
+                              </span>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {window.spots.map((spot: any, sIdx: number) => (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {period.spots.map((spot: any, sIdx: number) => (
                                 <div 
                                   key={sIdx} 
                                   onClick={() => {
                                     setActiveSpot(spot);
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                   }}
-                                  className={`rounded-2xl p-4 border transition-all cursor-pointer relative group bg-orange-50 border-orange-200`}
+                                  className={`rounded-2xl p-5 border transition-all cursor-pointer relative group bg-orange-50/30 border-orange-100 hover:border-orange-300 hover:shadow-md`}
                                 >
-                                  <div className="absolute top-4 right-4 bg-white px-3 py-1.5 rounded-xl shadow-md flex items-center gap-1.5 border border-slate-100">
-                                    <Star size={16} className="text-orange-500 fill-orange-500" />
+                                  <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-xl shadow-sm flex items-center gap-1.5 border border-slate-50">
+                                    <Star size={14} className="text-orange-500 fill-orange-500" />
                                     <span className="text-sm font-black text-slate-900">{spot.score}/10</span>
                                   </div>
-                                  <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black mb-3 shadow-sm transition-colors bg-orange-600 text-white`}>
+                                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black mb-3 shadow-sm transition-colors bg-orange-600 text-white`}>
                                     {sIdx + 1}
                                   </span>
-                                  <h4 className="text-lg font-display font-extrabold italic tracking-tight text-slate-900 mb-2">{spot.name}</h4>
-                                  <p className="text-base text-slate-600 font-medium leading-relaxed mb-4">{spot.description}</p>
+                                  <h4 className="text-xl font-display font-extrabold italic tracking-tight text-slate-900 mb-2">{spot.name}</h4>
+                                  <p className="text-base text-slate-600 font-medium leading-snug mb-4">{spot.description}</p>
                                   
-                                  <div className="pt-4 border-t border-orange-200">
+                                  <div className="pt-4 border-t border-orange-100/50">
                                     <a 
                                       href={`https://www.google.com/maps/search/?api=1&query=${spot.lat},${spot.lng}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="text-xs font-black uppercase text-orange-600 flex items-center gap-1 hover:underline"
+                                      className="text-[11px] font-black uppercase text-orange-600 flex items-center gap-1.5 hover:underline"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      <Navigation size={14} /> Ver en Google Maps
+                                      <Navigation size={12} /> Ver en Google Maps
                                     </a>
                                   </div>
                                 </div>
@@ -1588,9 +1797,6 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
                       </div>
                     </div>
 
-                    <AdSlot className="h-32" />
-
-                    {/* Map View */}
                     <div className="space-y-6">
                       <div className="flex items-center gap-3 text-slate-900">
                         <Navigation size={24} className="text-orange-600" />
@@ -1603,9 +1809,20 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
                       />
                     </div>
 
-                    <AdSlot className="h-32 mt-8" />
-                    
-                    <CostEstimator stats={usageStats} hasCustomKey={!!process.env.API_KEY} />
+                    {/* Pronóstico detallado (Estado de las cosas) */}
+                    <EstadoDeLasCosas 
+                      forecast={result.dailyResults[selectedDayIndex].forecast.filter((p: any) => {
+                        const now = new Date();
+                        const isToday = result.dailyResults[selectedDayIndex].date === now.toISOString().split('T')[0];
+                        if (!isToday) return true;
+                        if (now.getHours() >= 12 && (p.time || '').includes('Mañana')) return false;
+                        return true;
+                      })} 
+                      astronomy={result.astronomy}
+                    />
+
+                    {/* Usage Stats Component */}
+                    <DetailedUsageStats stats={usageStats} />
                   </motion.div>
                 )}
               </AnimatePresence>

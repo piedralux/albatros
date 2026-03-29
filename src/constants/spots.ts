@@ -35,7 +35,7 @@ export const ARGENTINA_COAST_SPOTS: Record<string, Spot> = {
   "Punta Mogotes (Balneario 24)": { lat: -38.0720, lng: -57.5450, category: 'general' },
   
   // Sur (The "Point")
-  "Waikiki": { lat: -38.0831, lng: -57.5442, category: 'surf', description: 'Punta sur de Mogotes' },
+  "Waikiki": { lat: -38.079986, lng: -57.539328, category: 'surf', description: 'Punta sur de Mogotes' },
   "Mariano": { lat: -38.0850, lng: -57.5460, category: 'surf' },
   "Honu Beach": { lat: -38.0880, lng: -57.5480, category: 'surf' },
   "El Faro": { lat: -38.0910, lng: -57.5500, category: 'surf' },

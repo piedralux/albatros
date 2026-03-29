@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
-import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud, CloudRain, Droplet, ArrowRight, Sun, Moon, AlertCircle, ArrowDown, Shirt, Star, Search, Cpu } from 'lucide-react';
+import { MapPin, Calendar, Activity, Car, Target, Waves, Wind, Navigation, Loader2, ChevronDown, ChevronUp, BarChart2, Share2, Check, Copy, Thermometer, Droplets, Cloud, CloudRain, Droplet, ArrowRight, Sun, Moon, AlertCircle, ArrowDown, Shirt, Star, Search, Cpu, Sunrise, Sunset } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+
+import { ARGENTINA_COAST_SPOTS } from './constants/spots';
 
 declare global {
   interface Window {
@@ -29,13 +31,7 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-const SPOT_COORDINATES: Record<string, { lat: number, lng: number }> = {
-  // --- MAR DEL PLATA ---
-  // Norte
-  "Sun Rider": { lat: -37.9560, lng: -57.5465 },
-  "Estrada": { lat: -37.9660, lng: -57.5435 },
-  "Cardiel": { lat: -37.9790, lng: -57.5405 },
-  
+const SPOT_COORDINATES_TO_REMOVE = {
   // La Perla
   "Alfonsina": { lat: -37.9910, lng: -57.5465 },
   "Saint Michel": { lat: -37.9930, lng: -57.5455 },
@@ -94,12 +90,7 @@ const SPOT_COORDINATES: Record<string, { lat: number, lng: number }> = {
   "Cariló": { lat: -37.1660, lng: -56.8965 },
   "Villa Gesell": { lat: -37.2560, lng: -56.9665 },
   "Mar de las Pampas": { lat: -37.3260, lng: -57.0265 },
-  "Mar Chiquita": { lat: -37.7560, lng: -57.4265 },
-
-  // Patagonia
-  "Las Grutas": { lat: -40.8160, lng: -65.0965 },
-  "Playa Unión": { lat: -43.3260, lng: -65.0365 },
-  "Rio Grande": { lat: -53.7860, lng: -67.7000 }
+  "Mar Chiquita": { lat: -37.7560, lng: -57.4265 }
 };
 
 const sanitizeResult = (data: any) => {
@@ -139,7 +130,7 @@ const sanitizeResult = (data: any) => {
             if (aliases[normalizedSpotName]) {
               matchedName = aliases[normalizedSpotName];
             } else {
-              for (const dbName of Object.keys(SPOT_COORDINATES)) {
+              for (const dbName of Object.keys(ARGENTINA_COAST_SPOTS)) {
                 const dbNormalized = normalize(dbName);
                 
                 if (normalizedSpotName === dbNormalized || 
@@ -153,8 +144,8 @@ const sanitizeResult = (data: any) => {
             
             if (matchedName) {
               spot.name = matchedName;
-              spot.lat = SPOT_COORDINATES[matchedName].lat;
-              spot.lng = SPOT_COORDINATES[matchedName].lng;
+              spot.lat = ARGENTINA_COAST_SPOTS[matchedName].lat;
+              spot.lng = ARGENTINA_COAST_SPOTS[matchedName].lng;
             } else {
               // Si no hay match, forzamos a una posición segura si las coordenadas de la IA son sospechosas
               // O simplemente dejamos que la IA intente, pero el sistema de arriba cubre el 99% de los casos reales.
@@ -341,6 +332,13 @@ const TimePicker = ({ value, onChange, minTime, className = "" }: { value: strin
 const DetailedUsageStats = ({ stats }: { stats: { prompt: number, candidates: number, total: number } | null }) => {
   if (!stats) return null;
 
+  // Estimated pricing for Gemini 1.5 Pro (Pay-as-you-go)
+  // Input: $3.50 / 1M tokens
+  // Output: $10.50 / 1M tokens
+  const inputCost = (stats.prompt / 1000000) * 3.50;
+  const outputCost = (stats.candidates / 1000000) * 10.50;
+  const totalCost = inputCost + outputCost;
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -353,9 +351,9 @@ const DetailedUsageStats = ({ stats }: { stats: { prompt: number, candidates: nu
         <div className="absolute top-0 right-0 w-96 h-96 bg-orange-600/10 blur-[120px] rounded-full -mr-48 -mt-48 animate-pulse" />
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-cyan-600/10 blur-[120px] rounded-full -ml-48 -mb-48 animate-pulse" style={{ animationDelay: '1s' }} />
         
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
-          <div className="space-y-4 text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+        <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-10">
+          <div className="space-y-4 text-center lg:text-left">
+            <div className="flex items-center justify-center lg:justify-start gap-3 mb-2">
               <div className="p-2 bg-orange-500/10 rounded-xl border border-orange-500/20">
                 <Cpu size={24} className="text-orange-500" />
               </div>
@@ -363,11 +361,18 @@ const DetailedUsageStats = ({ stats }: { stats: { prompt: number, candidates: nu
             </div>
             <h3 className="text-3xl font-display font-extrabold italic tracking-tight text-white leading-tight">Consumo de la consulta</h3>
             <p className="text-slate-400 text-base font-medium max-w-sm leading-relaxed">
-              Análisis realizado por Gemini 3.1 Pro. Estos son los recursos utilizados para generar tu reporte personalizado en tiempo real.
+              Análisis realizado por Gemini 3.1 Pro. Estos son los recursos utilizados y el costo estimado en USD (Pay-as-you-go).
             </p>
+            
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 rounded-2xl border border-white/10">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Costo Estimado:</span>
+              <span className="text-lg font-mono font-black text-green-400">
+                ${totalCost < 0.001 ? '< 0.001' : totalCost.toFixed(4)} USD
+              </span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full md:w-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full lg:w-auto">
             <div className="bg-slate-800/40 backdrop-blur-md p-6 rounded-3xl border border-slate-700/50 flex flex-col items-center justify-center text-center hover:border-orange-500/30 transition-all hover:bg-slate-800/60 group/card">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 group-hover/card:text-slate-400 transition-colors">Entrada</span>
               <span className="text-2xl font-mono font-bold text-white tracking-tighter">{stats.prompt.toLocaleString()}</span>
@@ -393,20 +398,39 @@ const DetailedUsageStats = ({ stats }: { stats: { prompt: number, candidates: nu
 const CostEstimator = ({ stats, hasCustomKey }: { stats: { prompt: number, candidates: number, total: number } | null, hasCustomKey: boolean }) => {
   if (!stats) return null;
 
+  // Precios Gemini 1.5 Pro (Pay-as-you-go)
+  // Input: $3.50 / 1M tokens
+  // Output: $10.50 / 1M tokens
+  const inputCost = (stats.prompt / 1000000) * 3.50;
+  const outputCost = (stats.candidates / 1000000) * 10.50;
+  const totalCost = inputCost + outputCost;
+
   return (
-    <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-100 rounded-full border border-slate-200 shadow-sm">
-      <div className="flex items-center gap-1.5">
-        <BarChart2 size={12} className="text-orange-600" />
-        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider hidden md:inline">Consumo:</span>
-        <span className="text-[11px] font-mono font-bold text-slate-900">{stats.total.toLocaleString()} tokens</span>
+    <div className="flex flex-col md:flex-row items-center gap-3 px-4 py-2 bg-slate-100 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <BarChart2 size={12} className="text-orange-600" />
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Consumo:</span>
+          <span className="text-[11px] font-mono font-bold text-slate-900">{stats.total.toLocaleString()} tokens</span>
+        </div>
+        <div className="h-3 w-[1px] bg-slate-300 hidden md:block" />
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Costo Est.:</span>
+          <span className="text-[11px] font-mono font-bold text-green-700">USD ${totalCost.toFixed(4)}</span>
+        </div>
       </div>
-      <div className="h-3 w-[1px] bg-slate-300" />
+      <div className="h-3 w-[1px] bg-slate-300 hidden md:block" />
       <div className="flex items-center gap-1">
-        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider hidden md:inline">Modo:</span>
+        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Modo:</span>
         <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${hasCustomKey ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
           {hasCustomKey ? 'PRO' : 'FREE'}
         </span>
       </div>
+      {!hasCustomKey && (
+        <span className="text-[9px] text-slate-400 italic">
+          * Bajo umbral de cortesía (Free Tier)
+        </span>
+      )}
     </div>
   );
 };
@@ -720,21 +744,13 @@ const EstadoDeLasCosas = ({ forecast, astronomy }: { forecast: any[], astronomy:
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
               <div className="text-yellow-500">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-                  <path d="m8 12.2 3-3 3 3" />
-                  <path d="M12 9.2V22" />
-                </svg>
+                <Sunrise size={24} strokeWidth={2.5} />
               </div>
               <span className="text-lg font-black text-slate-800">{astronomy.sunrise}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="text-blue-500">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-                  <path d="m8 15.8 3 3 3-3" />
-                  <path d="M12 18.8V2" />
-                </svg>
+                <Sunset size={24} strokeWidth={2.5} />
               </div>
               <span className="text-lg font-black text-slate-800">{astronomy.sunset}</span>
             </div>
@@ -835,53 +851,112 @@ function ChangeView({ center, zoom }: { center: [number, number], zoom: number }
 }
 
 const MapView = ({ spots, activeSpot, onSpotClick }: { spots: any[], activeSpot: any, onSpotClick: (spot: any) => void }) => {
+  const [calibrationMode, setCalibrationMode] = useState(false);
+  const [adjustedSpots, setAdjustedSpots] = useState<Record<string, { lat: number, lng: number }>>({});
+
   const center: [number, number] = activeSpot ? [activeSpot.lat, activeSpot.lng] : (spots.length > 0 ? [spots[0].lat, spots[0].lng] : [-38.0055, -57.5400]);
   const zoom = activeSpot ? 16 : 13;
   
+  const handleDragEnd = (name: string, e: any) => {
+    const { lat, lng } = e.target.getLatLng();
+    setAdjustedSpots(prev => ({
+      ...prev,
+      [name]: { lat: parseFloat(lat.toFixed(6)), lng: parseFloat(lng.toFixed(6)) }
+    }));
+  };
+
+  const copyCalibration = () => {
+    const output = Object.entries(adjustedSpots).map(([name, coords]) => 
+      `"${name}": { lat: ${coords.lat}, lng: ${coords.lng} }`
+    ).join(',\n');
+    navigator.clipboard.writeText(output);
+    alert("Coordenadas copiadas al portapapeles. ¡Pasamelas por el chat!");
+  };
+
   return (
-    <div className="h-[400px] lg:h-[600px] w-full rounded-[2rem] overflow-hidden border-4 border-white shadow-2xl relative z-0">
-      <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }}>
-        <ChangeView center={center} zoom={zoom} />
-        <TileLayer
-          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-          attribution='&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EBP, and the GIS User Community'
-        />
-        <TileLayer
-          url="https://stamen-tiles-{s}.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          opacity={0.7}
-        />
-        {spots.map((spot, idx) => (
-          <Marker 
-            key={idx} 
-            position={[spot.lat, spot.lng]}
-            eventHandlers={{
-              click: () => onSpotClick(spot),
-            }}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between px-2">
+        <button 
+          onClick={() => setCalibrationMode(!calibrationMode)}
+          className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all ${calibrationMode ? 'bg-orange-600 border-orange-600 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'}`}
+        >
+          {calibrationMode ? '🔧 Modo Calibración Activo' : '🔧 Calibrar Points'}
+        </button>
+        
+        {calibrationMode && Object.keys(adjustedSpots).length > 0 && (
+          <button 
+            onClick={copyCalibration}
+            className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-slate-900 text-white shadow-lg flex items-center gap-2 animate-bounce"
           >
-            <Popup>
-              <div className="p-2 min-w-[150px]">
-                <h4 className="font-black text-slate-900 text-sm uppercase mb-1">{spot.name}</h4>
-                <p className="text-xs text-slate-600 mb-3 leading-tight">{spot.description}</p>
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <Star size={12} className="text-orange-500 fill-orange-500" />
-                    <span className="text-xs font-black text-slate-900">{spot.score}/10</span>
+            <Copy size={12} /> Copiar {Object.keys(adjustedSpots).length} ajustes
+          </button>
+        )}
+      </div>
+
+      <div className="h-[400px] lg:h-[600px] w-full rounded-[2rem] overflow-hidden border-4 border-white shadow-2xl relative z-0">
+        <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }}>
+          <ChangeView center={center} zoom={zoom} />
+          <TileLayer
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            attribution='&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EBP, and the GIS User Community'
+          />
+          <TileLayer
+            url="https://stamen-tiles-{s}.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}{r}.png"
+            attribution='&copy; <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            opacity={0.7}
+          />
+          {spots.map((spot, idx) => {
+            const currentCoords = adjustedSpots[spot.name] || { lat: spot.lat, lng: spot.lng };
+            return (
+              <Marker 
+                key={idx} 
+                position={[currentCoords.lat, currentCoords.lng]}
+                draggable={calibrationMode}
+                eventHandlers={{
+                  dragend: (e) => handleDragEnd(spot.name, e),
+                  click: () => onSpotClick(spot)
+                }}
+              >
+                <Popup>
+                  <div className="p-2 min-w-[150px]">
+                    <h4 className="font-black text-slate-900 text-sm uppercase mb-1">{spot.name}</h4>
+                    {calibrationMode && adjustedSpots[spot.name] ? (
+                      <div className="mt-2 p-2 bg-slate-100 rounded-lg font-mono text-[10px] text-orange-600">
+                        {adjustedSpots[spot.name].lat}, {adjustedSpots[spot.name].lng}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-600 mb-3 leading-tight">{spot.description}</p>
+                    )}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <Star size={12} className="text-orange-500 fill-orange-500" />
+                        <span className="text-xs font-black text-slate-900">{spot.score}/10</span>
+                      </div>
+                      <a 
+                        href={`https://www.google.com/maps/search/?api=1&query=${currentCoords.lat},${currentCoords.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] font-black uppercase bg-orange-600 text-white px-3 py-1.5 rounded-lg text-center hover:bg-orange-700 transition-colors flex items-center justify-center gap-1"
+                      >
+                        <Navigation size={10} /> Cómo llegar
+                      </a>
+                    </div>
                   </div>
-                  <a 
-                    href={`https://www.google.com/maps/search/?api=1&query=${spot.lat},${spot.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[10px] font-black uppercase bg-orange-600 text-white px-3 py-1.5 rounded-lg text-center hover:bg-orange-700 transition-colors flex items-center justify-center gap-1"
-                  >
-                    <Navigation size={10} /> Cómo llegar
-                  </a>
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+                </Popup>
+              </Marker>
+            );
+          })}
+        </MapContainer>
+      </div>
+      
+      {calibrationMode && (
+        <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl">
+          <p className="text-[11px] text-orange-800 font-medium leading-relaxed">
+            <strong>Modo Calibración:</strong> Arrastrá los pines a la posición exacta donde rompe la ola. 
+            Cuando termines, hacé clic en "Copiar ajustes" y pegame el resultado en el chat para que lo guarde permanentemente.
+          </p>
+        </div>
+      )}
     </div>
   );
 };
@@ -1453,8 +1528,8 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
               <span className="text-xl md:text-2xl font-display font-extrabold tracking-tighter text-slate-900 uppercase italic">SURF<span className="text-orange-600">POINT</span></span>
             </div>
             
-            <div className="z-10">
-              <CostEstimator stats={usageStats} hasCustomKey={hasCustomKey} />
+            <div className="z-10 w-10 sm:w-auto">
+              {/* Espacio reservado para balance visual */}
             </div>
           </header>
         )}
@@ -1823,6 +1898,10 @@ El veredicto debe ser corto, al pie, y centrarse en si las condiciones se ponen 
 
                     {/* Usage Stats Component */}
                     <DetailedUsageStats stats={usageStats} />
+                    
+                    <div className="flex justify-center pb-12">
+                      <CostEstimator stats={usageStats} hasCustomKey={hasCustomKey} />
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
